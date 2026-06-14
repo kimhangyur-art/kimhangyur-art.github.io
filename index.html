@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>겨리 × 라니의 하루 체크</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" as="style" crossorigin
+  href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<style>
+  :root{
+    --bg-0:#131218;
+    --paper:#fbf8f3;
+    --paper-2:#f4efe6;
+    --ink:#2c2935;
+    --ink-soft:#8b8696;
+    --line:#e8e1d3;
+    --gyeori:#cf6a3c;
+    --rani:#6e6adf;
+    --shared:#1f9b8e;
+    --charge-bg:#ece6d8;
+    --radius-lg:20px;
+    --radius-md:12px;
+    --font-display:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    --font-mono:'SF Mono', SFMono-Regular, Consolas, 'Roboto Mono', monospace;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+
+  body{
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 12% 0%, rgba(207,106,60,0.16), transparent 45%),
+      radial-gradient(circle at 88% 8%, rgba(110,106,223,0.18), transparent 45%),
+      var(--bg-0);
+    color:#f1eee8;
+    font-family:var(--font-display);
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .page{ max-width:980px; margin:0 auto; padding:48px 20px 64px; }
+
+  /* ---------- header ---------- */
+  .hero{ text-align:center; margin-bottom:32px; }
+  .hero-date{
+    font-family:var(--font-mono); font-size:13px; letter-spacing:.12em;
+    color:rgba(241,238,232,0.5); margin-bottom:10px;
+  }
+  .hero-title{
+    font-size:clamp(26px,5vw,38px); font-weight:800; margin:0 0 8px;
+    letter-spacing:-0.01em;
+  }
+  .hero-title .cross{ color:var(--rani); font-weight:400; padding:0 6px; }
+  .hero-mood{ font-size:14px; color:rgba(241,238,232,0.6); margin:0 0 20px; }
+  .note{
+    display:inline-block; max-width:440px; margin:0 auto;
+    padding:14px 22px; background:var(--paper); color:var(--ink-soft);
+    border-radius:var(--radius-md); font-size:14px; line-height:1.6;
+    box-shadow:0 14px 32px -20px rgba(0,0,0,0.65);
+    outline:none; cursor:text;
+  }
+  .note:focus{ box-shadow:0 0 0 2px var(--rani), 0 14px 32px -20px rgba(0,0,0,0.65); color:var(--ink); }
+
+  /* ---------- card grid ---------- */
+  .cards-grid{
+    display:grid; grid-template-columns:1fr 1fr; gap:18px;
+    margin-bottom:18px; align-items:start;
+  }
+  @media (max-width:760px){ .cards-grid{ grid-template-columns:1fr; } }
+
+  .card{
+    position:relative; background:var(--paper); color:var(--ink);
+    border-radius:var(--radius-lg); padding:28px 24px 24px; overflow:hidden;
+    box-shadow:0 20px 50px -30px rgba(0,0,0,0.7);
+  }
+  .card-bar{ position:absolute; top:0; left:0; right:0; height:6px; }
+  .card[data-accent="gyeori"] .card-bar{ background:var(--gyeori); }
+  .card[data-accent="rani"] .card-bar{ background:var(--rani); }
+  .card[data-accent="shared"] .card-bar{ background:var(--shared); }
+
+  .card-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:14px; }
+  .card-head h2{ margin:0; font-size:20px; font-weight:800; }
+  .card[data-accent="gyeori"] h2{ color:var(--gyeori); }
+  .card[data-accent="rani"] h2{ color:var(--rani); }
+  .card-stat{ display:flex; align-items:baseline; gap:6px; font-family:var(--font-mono); }
+  .stat-label{ font-size:11px; color:var(--ink-soft); }
+  .stat-value{ font-size:15px; font-weight:700; }
+  .card[data-accent="gyeori"] .stat-value{ color:var(--gyeori); }
+  .card[data-accent="rani"] .stat-value{ color:var(--rani); }
+
+  .progress-track{ height:5px; border-radius:3px; background:var(--charge-bg); overflow:hidden; margin-bottom:20px; }
+  .progress-fill{ height:100%; width:0%; transition:width .25s ease; }
+  .card[data-accent="gyeori"] .progress-fill{ background:var(--gyeori); }
+  .card[data-accent="rani"] .progress-fill{ background:var(--rani); }
+
+  /* ---------- items ---------- */
+  .items{ display:flex; flex-direction:column; gap:14px; margin-bottom:16px; }
+  .empty-hint{ font-size:13px; color:var(--ink-soft); padding:6px 0; }
+  .item-row{ padding-bottom:12px; border-bottom:1px solid var(--line); }
+  .item-row:last-child{ border-bottom:none; padding-bottom:0; }
+  .item-main{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .item-label{
+    flex:1; border:none; border-bottom:1px solid transparent; background:transparent;
+    font-family:inherit; font-size:14.5px; font-weight:600; color:var(--ink);
+    padding:2px 0; min-width:0;
+  }
+  .item-label:focus{ outline:none; border-bottom:1px dashed var(--ink-soft); }
+  .item-remove{
+    border:none; background:transparent; color:var(--ink-soft); font-size:17px;
+    line-height:1; cursor:pointer; padding:2px 4px; opacity:.35; transition:opacity .15s, color .15s;
+  }
+  .item-remove:hover{ opacity:1; color:#c0392b; }
+
+  .item-charge{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .charge-bars{ display:flex; gap:4px; }
+  .charge-seg{
+    width:22px; height:10px; border-radius:4px; border:none; background:var(--charge-bg);
+    cursor:pointer; padding:0; transition:background .15s, transform .1s;
+  }
+  .charge-seg:hover{ transform:scaleY(1.25); }
+  .card[data-accent="gyeori"] .charge-seg.filled{ background:var(--gyeori); }
+  .card[data-accent="rani"] .charge-seg.filled{ background:var(--rani); }
+  .item-score{ font-family:var(--font-mono); font-size:12px; color:var(--ink-soft); min-width:30px; }
+  .item-time{ font-family:var(--font-mono); font-size:11px; color:var(--ink-soft); margin-left:auto; }
+
+  .add-item{
+    width:100%; border:1.5px dashed var(--line); background:transparent;
+    border-radius:var(--radius-md); padding:10px; font-size:13px; color:var(--ink-soft);
+    cursor:pointer; font-family:inherit; margin-bottom:20px; transition:border-color .15s, color .15s;
+  }
+  .add-item:hover{ border-color:var(--ink-soft); color:var(--ink); }
+
+  /* ---------- memo / textarea ---------- */
+  .memo-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; gap:8px; }
+  .memo-head label{
+    font-size:12px; font-weight:700; color:var(--ink-soft);
+    text-transform:uppercase; letter-spacing:.06em;
+  }
+  .timestamp{ font-family:var(--font-mono); font-size:11px; color:var(--ink-soft); white-space:nowrap; }
+  textarea{
+    width:100%; box-sizing:border-box; min-height:84px; resize:vertical;
+    border:1px solid var(--line); border-radius:var(--radius-md); padding:12px 14px;
+    font-family:inherit; font-size:14px; color:var(--ink); background:var(--paper-2); line-height:1.6;
+  }
+  textarea:focus{ outline:none; border-color:var(--ink-soft); background:var(--paper); }
+  textarea::placeholder{ color:#bdb6a8; }
+
+  /* ---------- shared card ---------- */
+  .shared-card{ margin-bottom:28px; }
+  .shared-card h2{ margin:0 0 18px; font-size:20px; font-weight:800; color:var(--shared); }
+  .shared-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  @media (max-width:760px){ .shared-grid{ grid-template-columns:1fr; } }
+  .shared-block textarea{ min-height:64px; }
+
+  /* ---------- footer / actions ---------- */
+  .actions-bar{ text-align:center; }
+  .actions{ display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+  .btn{
+    font-family:inherit; font-size:14px; font-weight:700; padding:12px 22px;
+    border-radius:999px; border:none; cursor:pointer; transition:transform .12s, opacity .15s, background .15s;
+  }
+  .btn:active{ transform:scale(0.97); }
+  .btn-primary{
+    background:linear-gradient(135deg, var(--gyeori), var(--rani)); color:#fff;
+    box-shadow:0 12px 30px -14px rgba(110,106,223,0.65);
+  }
+  .btn-ghost{ background:rgba(255,255,255,0.06); color:#f1eee8; border:1px solid rgba(255,255,255,0.16); }
+  .btn-ghost:hover{ background:rgba(255,255,255,0.12); }
+  .btn-danger:hover{ color:#ff8a7a; border-color:#ff8a7a; }
+
+  .last-activity{ font-family:var(--font-mono); font-size:12px; color:rgba(241,238,232,0.45); margin-bottom:18px; }
+
+  .history-panel{
+    max-width:560px; margin:0 auto 18px; background:var(--paper); color:var(--ink);
+    border-radius:var(--radius-lg); padding:18px 20px; text-align:left;
+  }
+  .history-panel.hidden{ display:none; }
+  .history-panel table{ width:100%; border-collapse:collapse; font-size:13px; }
+  .history-panel th, .history-panel td{ padding:6px 8px; text-align:left; border-bottom:1px solid var(--line); }
+  .history-panel th{ font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.05em; }
+  .history-panel td.mono{ font-family:var(--font-mono); }
+  .history-empty{ color:var(--ink-soft); text-align:center !important; }
+  .link-btn{
+    margin-top:10px; background:none; border:none; color:var(--ink-soft);
+    font-size:12px; cursor:pointer; text-decoration:underline; font-family:inherit;
+  }
+  .link-btn:hover{ color:#c0392b; }
+
+  .footnote{ font-size:12px; color:rgba(241,238,232,0.4); margin:0; }
+
+  /* ---------- accessibility ---------- */
+  button:focus-visible, textarea:focus-visible, input:focus-visible, [contenteditable]:focus-visible{
+    outline:2px solid var(--rani); outline-offset:2px;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="hero">
+    <div class="hero-date" id="dateLabel"></div>
+    <h1 class="hero-title">겨리 <span class="cross">×</span> 라니의 하루 체크</h1>
+    <p class="hero-mood" id="moodMessage"></p>
+    <div class="note" id="reminderNote" contenteditable="true" spellcheck="false"
+         title="클릭해서 우리만의 한마디를 자유롭게 수정할 수 있어요">까먹어서 생기는 문제니까 계속 기록하고 리마인드하자</div>
+  </header>
+
+  <main class="cards-grid">
+
+    <section class="card" data-accent="gyeori">
+      <div class="card-bar"></div>
+      <div class="card-head">
+        <h2>겨리</h2>
+        <div class="card-stat">
+          <span class="stat-label">오늘 충전량</span>
+          <span class="stat-value" id="gyeori-pct">0%</span>
+        </div>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="gyeori-progress"></div></div>
+
+      <div class="items" id="gyeori-items"></div>
+      <button class="add-item" id="addGyeoriBtn" type="button">+ 습관 추가</button>
+
+      <div class="memo-block">
+        <div class="memo-head">
+          <label>잘 된 점 메모</label>
+          <span class="timestamp" id="gyeori-memo-time"></span>
+        </div>
+        <textarea id="gyeori-memo" placeholder="작은 거도 완전 ㄱㅊ..."></textarea>
+      </div>
+    </section>
+
+    <section class="card" data-accent="rani">
+      <div class="card-bar"></div>
+      <div class="card-head">
+        <h2>라니</h2>
+        <div class="card-stat">
+          <span class="stat-label">오늘 충전량</span>
+          <span class="stat-value" id="rani-pct">0%</span>
+        </div>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="rani-progress"></div></div>
+
+      <div class="items" id="rani-items"></div>
+      <button class="add-item" id="addRaniBtn" type="button">+ 습관 추가</button>
+
+      <div class="memo-block">
+        <div class="memo-head">
+          <label>잘 된 점 메모</label>
+          <span class="timestamp" id="rani-memo-time"></span>
+        </div>
+        <textarea id="rani-memo" placeholder="솔직하게 써도 돼..."></textarea>
+      </div>
+    </section>
+
+  </main>
+
+  <section class="card shared-card" data-accent="shared">
+    <div class="card-bar"></div>
+    <h2>우리 둘이</h2>
+    <div class="shared-grid">
+      <div class="shared-block">
+        <div class="memo-head">
+          <label>겨리 → 라니 칭찬</label>
+          <span class="timestamp" id="g2r-time"></span>
+        </div>
+        <textarea id="g2r" placeholder="오늘 고마웠던 거..."></textarea>
+      </div>
+      <div class="shared-block">
+        <div class="memo-head">
+          <label>라니 → 겨리 칭찬</label>
+          <span class="timestamp" id="r2g-time"></span>
+        </div>
+        <textarea id="r2g" placeholder="오늘 고마웠던 거..."></textarea>
+      </div>
+      <div class="shared-block">
+        <div class="memo-head">
+          <label>내일 겨리 목표</label>
+          <span class="timestamp" id="ggoal-time"></span>
+        </div>
+        <textarea id="ggoal" placeholder="딱 한 가지만..."></textarea>
+      </div>
+      <div class="shared-block">
+        <div class="memo-head">
+          <label>내일 라니 목표</label>
+          <span class="timestamp" id="rgoal-time"></span>
+        </div>
+        <textarea id="rgoal" placeholder="딱 한 가지만..."></textarea>
+      </div>
+    </div>
+  </section>
+
+  <footer class="actions-bar">
+    <div class="actions">
+      <button class="btn btn-primary" id="saveBtn" type="button">오늘 기록 저장 (.txt)</button>
+      <button class="btn btn-ghost" id="historyBtn" type="button">지난 기록 보기</button>
+      <button class="btn btn-ghost btn-danger" id="resetBtn" type="button">오늘 기록 초기화</button>
+    </div>
+    <div class="last-activity" id="lastActivity"></div>
+
+    <section class="history-panel hidden" id="historyPanel">
+      <table>
+        <thead><tr><th>날짜</th><th>겨리</th><th>라니</th><th>저장 시각</th></tr></thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+      <button class="link-btn" id="clearHistoryBtn" type="button">지난 기록 전체 삭제</button>
+    </section>
+
+    <p class="footnote">이 브라우저에 자동 저장돼요 · 날짜가 바뀌면 새 기록이 시작돼요 · "저장" 버튼을 누르면 .txt 파일로 다운로드돼요</p>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  var STORAGE_DATA = 'coupleCheck.data.v1';
+  var STORAGE_HISTORY = 'coupleCheck.history.v1';
+  var STORAGE_NOTE = 'coupleCheck.note.v1';
+  var WEEKDAYS = ['일','월','화','수','목','금','토'];
+
+  function pad(n){ return String(n).padStart(2,'0'); }
+
+  function todayKey(){
+    var d = new Date();
+    return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+  }
+
+  function formatDateDisplay(key){
+    var parts = key.split('-').map(Number);
+    var dt = new Date(parts[0], parts[1]-1, parts[2]);
+    return parts[0] + '년 ' + parts[1] + '월 ' + parts[2] + '일 (' + WEEKDAYS[dt.getDay()] + ')';
+  }
+
+  function nowTime(){
+    var d = new Date();
+    return pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  function defaultState(dateKey){
+    return {
+      date: dateKey,
+      lastActivityAt: null,
+      gyeori: {
+        items: [
+          {label:'오늘 씻기', score:0, updatedAt:null},
+          {label:'중고시장 · 웹서핑 시간 줄이기', score:0, updatedAt:null},
+          {label:'계획이나 기록 시간 갖기', score:0, updatedAt:null},
+          {label:'오늘의 루틴 한 가지', score:0, updatedAt:null}
+        ],
+        memo:'', memoAt:null
+      },
+      rani: {
+        items: [
+          {label:'스트레칭', score:0, updatedAt:null},
+          {label:'영양제 챙기기', score:0, updatedAt:null},
+          {label:'집 정리 한 가지', score:0, updatedAt:null},
+          {label:'세탁 처리', score:0, updatedAt:null},
+          {label:'잠 자려고 노력하기', score:0, updatedAt:null}
+        ],
+        memo:'', memoAt:null
+      },
+      shared: {
+        g2r:'', g2rAt:null,
+        r2g:'', r2gAt:null,
+        ggoal:'', ggoalAt:null,
+        rgoal:'', rgoalAt:null
+      }
+    };
+  }
+
+  function avgPct(items){
+    if(!items.length) return 0;
+    var sum = items.reduce(function(a,i){ return a+i.score; }, 0);
+    return Math.round((sum/(items.length*5))*100);
+  }
+
+  function summarize(s){
+    return { date:s.date, gyeoriPct:avgPct(s.gyeori.items), raniPct:avgPct(s.rani.items), savedAt: nowTime() };
+  }
+
+  function loadHistory(){
+    try { return JSON.parse(localStorage.getItem(STORAGE_HISTORY)) || []; }
+    catch(e){ return []; }
+  }
+  function saveHistory(h){
+    localStorage.setItem(STORAGE_HISTORY, JSON.stringify(h.slice(0,90)));
+  }
+  function pushHistory(entry){
+    var h = loadHistory();
+    h.unshift(entry);
+    saveHistory(h);
+  }
+
+  function loadState(){
+    var saved = null;
+    try { saved = JSON.parse(localStorage.getItem(STORAGE_DATA)); } catch(e){}
+    var today = todayKey();
+    if (saved && saved.date === today) return saved;
+    if (saved && saved.date !== today) {
+      var total = saved.gyeori.items.concat(saved.rani.items)
+        .reduce(function(a,i){ return a+i.score; }, 0);
+      if (total > 0) pushHistory(summarize(saved));
+    }
+    return defaultState(today);
+  }
+
+  var state = loadState();
+
+  function persist(){
+    localStorage.setItem(STORAGE_DATA, JSON.stringify(state));
+  }
+
+  function touch(){
+    state.lastActivityAt = nowTime();
+    persist();
+    renderLastActivity();
+  }
+
+  // ---------------- rendering ----------------
+  function moodMessage(){
+    var items = state.gyeori.items.concat(state.rani.items);
+    var total = items.reduce(function(a,i){ return a+i.score; }, 0);
+    if (!items.length || total === 0) return '아직 오늘 기록 전이에요. 천천히 채워봐요.';
+    var pct = Math.round((total/(items.length*5))*100);
+    if (pct >= 80) return '오늘 둘 다 충전 완료! 잘했어요.';
+    if (pct >= 50) return '오늘도 충분히 잘하고 있어요.';
+    if (pct >= 20) return '조금이라도 적었다면 그걸로 충분해요.';
+    return '오늘은 쉬어가는 날, 내일 또 가봐요.';
+  }
+
+  function renderHeader(){
+    document.getElementById('dateLabel').textContent = formatDateDisplay(state.date);
+    document.getElementById('moodMessage').textContent = moodMessage();
+  }
+
+  function renderLastActivity(){
+    var el = document.getElementById('lastActivity');
+    el.textContent = state.lastActivityAt ? ('마지막 기록 · ' + state.lastActivityAt) : '아직 기록한 내용이 없어요';
+  }
+
+  function renderPerson(person){
+    var data = state[person];
+    var container = document.getElementById(person + '-items');
+    container.innerHTML = '';
+
+    if (!data.items.length){
+      var hint = document.createElement('div');
+      hint.className = 'empty-hint';
+      hint.textContent = '아래 버튼으로 습관을 추가해보세요.';
+      container.appendChild(hint);
+    }
+
+    data.items.forEach(function(item, idx){
+      var row = document.createElement('div');
+      row.className = 'item-row';
+
+      var main = document.createElement('div');
+      main.className = 'item-main';
+
+      var label = document.createElement('input');
+      label.className = 'item-label';
+      label.value = item.label;
+      label.addEventListener('change', function(){
+        item.label = label.value.trim() || item.label;
+        label.value = item.label;
+        persist();
+      });
+
+      var remove = document.createElement('button');
+      remove.className = 'item-remove';
+      remove.type = 'button';
+      remove.textContent = '×';
+      remove.title = '이 습관 삭제';
+      remove.addEventListener('click', function(){
+        if (confirm("'" + item.label + "' 항목을 삭제할까요?")){
+          data.items.splice(idx, 1);
+          touch();
+          renderPerson(person);
+        }
+      });
+
+      main.appendChild(label);
+      main.appendChild(remove);
+
+      var charge = document.createElement('div');
+      charge.className = 'item-charge';
+
+      var bars = document.createElement('div');
+      bars.className = 'charge-bars';
+      for (var lvl=1; lvl<=5; lvl++){
+        (function(lvl){
+          var seg = document.createElement('button');
+          seg.type = 'button';
+          seg.className = 'charge-seg' + (item.score >= lvl ? ' filled' : '');
+          seg.title = lvl + '점';
+          seg.addEventListener('click', function(){
+            item.score = (item.score === lvl) ? lvl - 1 : lvl;
+            item.updatedAt = nowTime();
+            touch();
+            renderPerson(person);
+          });
+          bars.appendChild(seg);
+        })(lvl);
+      }
+
+      var score = document.createElement('span');
+      score.className = 'item-score';
+      score.textContent = item.score + '/5';
+
+      var time = document.createElement('span');
+      time.className = 'item-time';
+      time.textContent = item.updatedAt || '';
+
+      charge.appendChild(bars);
+      charge.appendChild(score);
+      charge.appendChild(time);
+
+      row.appendChild(main);
+      row.appendChild(charge);
+      container.appendChild(row);
+    });
+
+    document.getElementById(person + '-pct').textContent = avgPct(data.items) + '%';
+    document.getElementById(person + '-progress').style.width = avgPct(data.items) + '%';
+  }
+
+  function renderMemos(){
+    document.getElementById('gyeori-memo').value = state.gyeori.memo;
+    document.getElementById('gyeori-memo-time').textContent = state.gyeori.memoAt || '';
+
+    document.getElementById('rani-memo').value = state.rani.memo;
+    document.getElementById('rani-memo-time').textContent = state.rani.memoAt || '';
+
+    ['g2r','r2g','ggoal','rgoal'].forEach(function(key){
+      document.getElementById(key).value = state.shared[key];
+      document.getElementById(key + '-time').textContent = state.shared[key + 'At'] || '';
+    });
+  }
+
+  function renderHistory(){
+    var tbody = document.getElementById('historyBody');
+    var history = loadHistory();
+    tbody.innerHTML = '';
+    if (!history.length){
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td colspan="4" class="history-empty">아직 저장된 기록이 없어요</td>';
+      tbody.appendChild(tr);
+      return;
+    }
+    history.forEach(function(h){
+      var tr = document.createElement('tr');
+      var tdDate = document.createElement('td');
+      tdDate.textContent = h.date;
+      var tdG = document.createElement('td');
+      tdG.textContent = '겨리 ' + h.gyeoriPct + '%';
+      var tdR = document.createElement('td');
+      tdR.textContent = '라니 ' + h.raniPct + '%';
+      var tdT = document.createElement('td');
+      tdT.className = 'mono';
+      tdT.textContent = h.savedAt;
+      tr.appendChild(tdDate); tr.appendChild(tdG); tr.appendChild(tdR); tr.appendChild(tdT);
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderAll(){
+    renderHeader();
+    renderPerson('gyeori');
+    renderPerson('rani');
+    renderMemos();
+    renderLastActivity();
+    renderHistory();
+  }
+
+  // ---------------- bindings ----------------
+  function bindTextarea(id, getVal, setVal, getAt, setAt){
+    var el = document.getElementById(id);
+    var timer = null;
+    el.addEventListener('input', function(){
+      setVal(el.value);
+      clearTimeout(timer);
+      timer = setTimeout(function(){
+        setAt(nowTime());
+        touch();
+        document.getElementById(id + '-time').textContent = getAt();
+      }, 600);
+    });
+  }
+
+  function addItem(person){
+    var label = prompt('새 습관 이름을 입력해줘');
+    if (!label || !label.trim()) return;
+    state[person].items.push({label: label.trim(), score:0, updatedAt:null});
+    touch();
+    renderPerson(person);
+  }
+
+  function resetToday(){
+    if (!confirm('오늘 기록을 초기화할까요? 저장하지 않은 내용은 사라져요.')) return;
+    state = defaultState(todayKey());
+    persist();
+    renderAll();
+  }
+
+  function buildReport(){
+    var lines = [];
+    lines.push('============================================');
+    lines.push('겨리 × 라니의 하루 체크');
+    lines.push('날짜: ' + formatDateDisplay(state.date));
+    lines.push('저장 시각: ' + nowTime());
+    lines.push('============================================');
+    lines.push('');
+
+    [['gyeori','겨리'], ['rani','라니']].forEach(function(pair){
+      var key = pair[0], name = pair[1];
+      var d = state[key];
+      var pct = avgPct(d.items);
+      var avgScore = d.items.length
+        ? (d.items.reduce(function(a,i){ return a+i.score; },0)/d.items.length).toFixed(1)
+        : '0.0';
+      lines.push('[' + name + ']');
+      lines.push('오늘 충전량: ' + pct + '% (평균 ' + avgScore + '/5)');
+      d.items.forEach(function(item){
+        lines.push('- ' + item.label + ': ' + item.score + '/5' + (item.updatedAt ? '  (기록 ' + item.updatedAt + ')' : ''));
+      });
+      lines.push('');
+      lines.push('잘 된 점 메모' + (d.memoAt ? ' (기록 ' + d.memoAt + ')' : ''));
+      lines.push(d.memo.trim() || '(작성 없음)');
+      lines.push('');
+      lines.push('--------------------------------------------');
+      lines.push('');
+    });
+
+    var sh = state.shared;
+    lines.push('[우리 둘이]');
+    lines.push('');
+    lines.push('겨리 → 라니 칭찬' + (sh.g2rAt ? ' (기록 ' + sh.g2rAt + ')' : ''));
+    lines.push(sh.g2r.trim() || '(작성 없음)');
+    lines.push('');
+    lines.push('라니 → 겨리 칭찬' + (sh.r2gAt ? ' (기록 ' + sh.r2gAt + ')' : ''));
+    lines.push(sh.r2g.trim() || '(작성 없음)');
+    lines.push('');
+    lines.push('내일 겨리 목표' + (sh.ggoalAt ? ' (기록 ' + sh.ggoalAt + ')' : ''));
+    lines.push(sh.ggoal.trim() || '(작성 없음)');
+    lines.push('');
+    lines.push('내일 라니 목표' + (sh.rgoalAt ? ' (기록 ' + sh.rgoalAt + ')' : ''));
+    lines.push(sh.rgoal.trim() || '(작성 없음)');
+    lines.push('');
+    lines.push('============================================');
+    return lines.join('\n');
+  }
+
+  function downloadReport(){
+    var content = buildReport();
+    var blob = new Blob([content], {type:'text/plain;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '하루체크_' + state.date + '.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    var total = state.gyeori.items.concat(state.rani.items)
+      .reduce(function(a,i){ return a+i.score; }, 0);
+    if (total > 0){
+      pushHistory(summarize(state));
+      renderHistory();
+    }
+  }
+
+  function init(){
+    var storedNote = localStorage.getItem(STORAGE_NOTE);
+    if (storedNote !== null){
+      document.getElementById('reminderNote').textContent = storedNote;
+    }
+    document.getElementById('reminderNote').addEventListener('input', function(){
+      localStorage.setItem(STORAGE_NOTE, this.textContent);
+    });
+
+    document.getElementById('addGyeoriBtn').addEventListener('click', function(){ addItem('gyeori'); });
+    document.getElementById('addRaniBtn').addEventListener('click', function(){ addItem('rani'); });
+
+    bindTextarea('gyeori-memo',
+      function(){ return state.gyeori.memo; }, function(v){ state.gyeori.memo = v; },
+      function(){ return state.gyeori.memoAt; }, function(t){ state.gyeori.memoAt = t; });
+    bindTextarea('rani-memo',
+      function(){ return state.rani.memo; }, function(v){ state.rani.memo = v; },
+      function(){ return state.rani.memoAt; }, function(t){ state.rani.memoAt = t; });
+    bindTextarea('g2r',
+      function(){ return state.shared.g2r; }, function(v){ state.shared.g2r = v; },
+      function(){ return state.shared.g2rAt; }, function(t){ state.shared.g2rAt = t; });
+    bindTextarea('r2g',
+      function(){ return state.shared.r2g; }, function(v){ state.shared.r2g = v; },
+      function(){ return state.shared.r2gAt; }, function(t){ state.shared.r2gAt = t; });
+    bindTextarea('ggoal',
+      function(){ return state.shared.ggoal; }, function(v){ state.shared.ggoal = v; },
+      function(){ return state.shared.ggoalAt; }, function(t){ state.shared.ggoalAt = t; });
+    bindTextarea('rgoal',
+      function(){ return state.shared.rgoal; }, function(v){ state.shared.rgoal = v; },
+      function(){ return state.shared.rgoalAt; }, function(t){ state.shared.rgoalAt = t; });
+
+    document.getElementById('saveBtn').addEventListener('click', downloadReport);
+    document.getElementById('historyBtn').addEventListener('click', function(){
+      document.getElementById('historyPanel').classList.toggle('hidden');
+    });
+    document.getElementById('resetBtn').addEventListener('click', resetToday);
+    document.getElementById('clearHistoryBtn').addEventListener('click', function(){
+      if (confirm('지난 기록을 전부 삭제할까요?')){
+        localStorage.removeItem(STORAGE_HISTORY);
+        renderHistory();
+      }
+    });
+
+    renderAll();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
