@@ -18,9 +18,29 @@ import { effectiveHires, resolveSettings } from '../settings';
 import type { Library, Project, SceneGroup } from '../types';
 import { GraphBuilder, MODE_ALWAYS, MODE_MUTED, TITLE_H, nodeRect, type WfNode, type Workflow } from './graph';
 
+/**
+ * 나중에 붙일 후처리 단계 자리 (예: FaceDetailer 얼굴 보정, 배경 제거 같은 커스텀 노드).
+ * 지금은 하나도 없다. 단계를 만들 때는 nodeDefs.ts의 NODE_DEFS에 그 노드 정의를 더하고,
+ * requiredNodes를 ComfyUI 연결로 받은 nodeTypes와 비교해(stageAvailable) 설치됐을 때만 켠다.
+ * 마무리의 마지막 디코드와 저장 사이에 끼워 넣으므로 기본 단계(초안과 같아야 하는 부분)는 건드리지 않는다.
+ */
+export interface PostStage {
+  id: string;
+  label: string;
+  requiredNodes: string[];
+  /** 디코드한 이미지 노드(IMAGE 출력)를 받아 새 IMAGE 출력 노드와 만든 노드들을 돌려준다 */
+  apply(gb: GraphBuilder, image: WfNode, row: PlannedRow): { output: WfNode; nodes: WfNode[] };
+}
+
+export function stageAvailable(stage: PostStage, nodeTypes: string[] | undefined): boolean {
+  return !!nodeTypes && stage.requiredNodes.every((n) => nodeTypes.includes(n));
+}
+
 export interface BuildOptions {
   rng?: Rng;
   now?: Date;
+  /** 마무리에서 디코드 뒤에 붙일 후처리 단계 (기본 없음) */
+  postStages?: PostStage[];
 }
 
 export interface RowNodes {
@@ -356,9 +376,18 @@ export function buildWorkflow(project: Project, library: Library, plan: Plan, op
     gb.connect(vae, 2, dec, 'vae');
     cols.push([{ node: dec }]);
 
+    let image: WfNode = dec;
+    if (finalize) {
+      for (const stage of opts.postStages ?? []) {
+        const out = stage.apply(gb, image, r);
+        cols.push(out.nodes.map((node) => ({ node })));
+        image = out.output;
+      }
+    }
+
     const saveTitle = r.target ? `${r.title} · 저장` : `${r.title} · 저장 (꺼짐: ${r.skipReason})`;
     const save = add('SaveImage', saveTitle, { filename_prefix: r.savePrefix }, { mode: r.target ? MODE_ALWAYS : MODE_MUTED });
-    gb.connect(dec, 0, save, 'images');
+    gb.connect(image, 0, save, 'images');
     cols.push([{ node: save }]);
 
     const noteText = rowNoteText(r);

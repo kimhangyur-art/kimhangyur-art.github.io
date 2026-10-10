@@ -31,7 +31,7 @@ export function rowKey(charId: string, sceneId: string): string {
   return `${charId}|${sceneId}`;
 }
 
-export function newProject(name = '새 프로젝트'): Project {
+export function newProject(name = '새 작업'): Project {
   const now = Date.now();
   return {
     version: 1,
