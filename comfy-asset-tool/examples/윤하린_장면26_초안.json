@@ -1,0 +1,7862 @@
+{
+  "id": "8b7e2c75-29a7-4ce4-84ba-8764e0092f8b",
+  "revision": 0,
+  "last_node_id": 148,
+  "last_link_id": 221,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "CheckpointLoaderSimple",
+      "pos": [
+        0,
+        404
+      ],
+      "size": [
+        340,
+        98
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            1
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            2
+          ],
+          "slot_index": 1
+        },
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            13,
+            21,
+            29,
+            37,
+            45,
+            53,
+            61,
+            70,
+            78,
+            86,
+            94,
+            102,
+            110,
+            118,
+            126,
+            134,
+            143,
+            151,
+            160,
+            169,
+            177,
+            185,
+            193,
+            202,
+            211,
+            220
+          ],
+          "slot_index": 2
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CheckpointLoaderSimple"
+      },
+      "widgets_values": [
+        "waiIllustriousSDXL_v170.safetensors"
+      ],
+      "title": "체크포인트"
+    },
+    {
+      "id": 2,
+      "type": "LoraLoader",
+      "pos": [
+        0,
+        612
+      ],
+      "size": [
+        340,
+        126
+      ],
+      "flags": {},
+      "order": 32,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 1
+        },
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 2
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            8,
+            16,
+            24,
+            32,
+            40,
+            48,
+            56,
+            65,
+            73,
+            81,
+            89,
+            97,
+            105,
+            113,
+            121,
+            129,
+            138,
+            146,
+            155,
+            164,
+            172,
+            180,
+            188,
+            197,
+            206,
+            215
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            3
+          ],
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoraLoader"
+      },
+      "widgets_values": [
+        "gyeol.safetensors",
+        1,
+        1
+      ],
+      "title": "로라 · gyeol 1.0"
+    },
+    {
+      "id": 3,
+      "type": "CLIPSetLastLayer",
+      "pos": [
+        390,
+        612
+      ],
+      "size": [
+        300,
+        58
+      ],
+      "flags": {},
+      "order": 33,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 3
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            4,
+            5,
+            6,
+            7,
+            15,
+            23,
+            31,
+            39,
+            47,
+            55,
+            63,
+            64,
+            72,
+            80,
+            88,
+            96,
+            104,
+            112,
+            120,
+            128,
+            136,
+            137,
+            145,
+            153,
+            154,
+            162,
+            163,
+            171,
+            179,
+            187,
+            195,
+            196,
+            204,
+            205,
+            213,
+            214
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPSetLastLayer"
+      },
+      "widgets_values": [
+        -2
+      ],
+      "title": "CLIP skip 2 · gyeol 1.0"
+    },
+    {
+      "id": 4,
+      "type": "CLIPTextEncode",
+      "pos": [
+        0,
+        848
+      ],
+      "size": [
+        420,
+        140
+      ],
+      "flags": {},
+      "order": 34,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 4
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            10,
+            123,
+            131,
+            148,
+            174,
+            182
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "worst quality, bad quality, low quality, lowres, bad anatomy, bad hands, extra fingers, missing fingers, jpeg artifacts, signature, watermark, text, loli, child, aged down, short hair, ponytail, twintails, braid, blonde hair, multicolored hair, glasses, hat, animal ears, tail, flat chest, petite, sweat, school uniform, serafuku"
+      ],
+      "title": "네거티브 1 · gyeol 1.0 (6줄)"
+    },
+    {
+      "id": 5,
+      "type": "CLIPTextEncode",
+      "pos": [
+        470,
+        848
+      ],
+      "size": [
+        420,
+        140
+      ],
+      "flags": {},
+      "order": 35,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 5
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            18,
+            34,
+            42,
+            58,
+            75,
+            83,
+            91,
+            99,
+            107,
+            115,
+            190
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "worst quality, bad quality, low quality, lowres, bad anatomy, bad hands, extra fingers, missing fingers, jpeg artifacts, signature, watermark, text, loli, child, aged down, short hair, ponytail, twintails, braid, blonde hair, multicolored hair, glasses, hat, animal ears, tail, flat chest, petite, school uniform, serafuku"
+      ],
+      "title": "네거티브 2 · gyeol 1.0 (11줄)"
+    },
+    {
+      "id": 6,
+      "type": "CLIPTextEncode",
+      "pos": [
+        940,
+        848
+      ],
+      "size": [
+        420,
+        140
+      ],
+      "flags": {},
+      "order": 36,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 6
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            26,
+            50
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "worst quality, bad quality, low quality, lowres, bad anatomy, bad hands, extra fingers, missing fingers, jpeg artifacts, signature, watermark, text, loli, child, aged down, short hair, ponytail, twintails, braid, blonde hair, multicolored hair, glasses, hat, animal ears, tail, flat chest, petite, blush, sweat, school uniform, serafuku"
+      ],
+      "title": "네거티브 3 · gyeol 1.0 (2줄)"
+    },
+    {
+      "id": 7,
+      "type": "EmptyLatentImage",
+      "pos": [
+        0,
+        1098
+      ],
+      "size": [
+        300,
+        106
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            11,
+            19,
+            27,
+            35,
+            43,
+            51,
+            59,
+            68,
+            76,
+            84,
+            92,
+            100,
+            108,
+            116,
+            124,
+            132,
+            141,
+            149,
+            158,
+            167,
+            175,
+            183,
+            191,
+            209,
+            218
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "EmptyLatentImage"
+      },
+      "widgets_values": [
+        1024,
+        1024,
+        1
+      ],
+      "title": "크기 1024×1024"
+    },
+    {
+      "id": 8,
+      "type": "EmptyLatentImage",
+      "pos": [
+        350,
+        1098
+      ],
+      "size": [
+        300,
+        106
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            200
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "EmptyLatentImage"
+      },
+      "widgets_values": [
+        1216,
+        832,
+        1
+      ],
+      "title": "크기 1216×832"
+    },
+    {
+      "id": 9,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        356
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 37,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 7
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            9
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, expressionless, closed mouth, white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch"
+      ],
+      "title": "1 기본 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 10,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        356
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 70,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 8
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 9
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 10
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 11
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            12
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        1067554914030440,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "1 기본 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 11,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        356
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 96,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 12
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 13
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            14
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "1 기본 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 12,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        356
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 122,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 14
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_1"
+      ],
+      "title": "1 기본 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 13,
+      "type": "Note",
+      "pos": [
+        3030,
+        356
+      ],
+      "size": [
+        300,
+        138
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): neutral face\n원본 네거티브: sweat\n바꾼 점: neutral face는 Danbooru 태그가 아니라 expressionless, closed mouth로 바꿈"
+      ],
+      "title": "1 기본 · 윤하린 · 메모"
+    },
+    {
+      "id": 14,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        786
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 38,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 15
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            17
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, (light smile:1.1), closed mouth, happy, white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch, white background, simple background"
+      ],
+      "title": "2 미소 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 15,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        786
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 71,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 16
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 17
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 18
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 19
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            20
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        53809577096903,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "2 미소 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 16,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        786
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 97,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 20
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 21
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            22
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "2 미소 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 17,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        786
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 123,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 22
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_2"
+      ],
+      "title": "2 미소 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 18,
+      "type": "Note",
+      "pos": [
+        3030,
+        786
+      ],
+      "size": [
+        300,
+        156
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): (smiling, light smile, closed mouth, happy:1.3), white background, simple background\n바꾼 점: smiling 중복 제거, 강도 1.3→1.1"
+      ],
+      "title": "2 미소 · 윤하린 · 메모"
+    },
+    {
+      "id": 19,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        1216
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 39,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 23
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            25
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, (frown, annoyed:1.1), closed mouth, white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch, white background, simple background"
+      ],
+      "title": "3 불쾌 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 20,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        1216
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 72,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 24
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 25
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 26
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 27
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            28
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        658726072246335,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "3 불쾌 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 21,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        1216
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 98,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 28
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 29
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            30
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "3 불쾌 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 22,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        1216
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 124,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 30
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_3"
+      ],
+      "title": "3 불쾌 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 23,
+      "type": "Note",
+      "pos": [
+        3030,
+        1216
+      ],
+      "size": [
+        300,
+        174
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): (displeased, frowning, slight frown:1.3), white background, simple background\n원본 네거티브: blush, sweat\n바꾼 점: 찡그림 태그 셋을 frown, annoyed로 정리"
+      ],
+      "title": "3 불쾌 · 윤하린 · 메모"
+    },
+    {
+      "id": 24,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        1646
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 40,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 31
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            33
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, (blush:1.1), shy, looking away, white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch, white background, simple background"
+      ],
+      "title": "4 부끄러움 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 25,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        1646
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 73,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 32
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 33
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 34
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 35
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            36
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        1016567218350039,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "4 부끄러움 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 26,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        1646
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 99,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 36
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 37
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            38
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "4 부끄러움 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 27,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        1646
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 125,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 38
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_4"
+      ],
+      "title": "4 부끄러움 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 28,
+      "type": "Note",
+      "pos": [
+        3030,
+        1646
+      ],
+      "size": [
+        300,
+        156
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): (blushing, shy, averting gaze, rosy cheeks:1.3), white background, simple background\n바꾼 점: blushing·rosy cheeks를 blush 하나로"
+      ],
+      "title": "4 부끄러움 · 윤하린 · 메모"
+    },
+    {
+      "id": 29,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        2076
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 41,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 39
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            41
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, (surprised:1.1), wide-eyed, open mouth, white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch, white background, simple background"
+      ],
+      "title": "5 놀람 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 30,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        2076
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 74,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 40
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 41
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 42
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 43
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            44
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        445128765618296,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "5 놀람 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 31,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        2076
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 100,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 44
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 45
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            46
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "5 놀람 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 32,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        2076
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 126,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 46
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_5"
+      ],
+      "title": "5 놀람 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 33,
+      "type": "Note",
+      "pos": [
+        3030,
+        2076
+      ],
+      "size": [
+        300,
+        156
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): (surprised, wide eyes, open mouth, stunned:1.3), white background, simple background\n바꾼 점: stunned 중복 제거, wide eyes→wide-eyed"
+      ],
+      "title": "5 놀람 · 윤하린 · 메모"
+    },
+    {
+      "id": 34,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        2506
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 42,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 47
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            49
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, (contempt:1.1), smug, shaded face, half-closed eyes, looking down, white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch, white background, simple background"
+      ],
+      "title": "6 경멸 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 35,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        2506
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 75,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 48
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 49
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 50
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 51
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            52
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        857734151168165,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "6 경멸 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 36,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        2506
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 101,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 52
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 53
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            54
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "6 경멸 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 37,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        2506
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 127,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 54
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_6"
+      ],
+      "title": "6 경멸 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 38,
+      "type": "Note",
+      "pos": [
+        3030,
+        2506
+      ],
+      "size": [
+        300,
+        210
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): white background, simple background, (contempt, scornful, smug, frown, displeased, shaded face:1.3), looking down\n원본 네거티브: blush, sweat\n바꾼 점: smug와 부딪히는 frown·displeased를 빼고 half-closed eyes 추가"
+      ],
+      "title": "6 경멸 · 윤하린 · 메모"
+    },
+    {
+      "id": 39,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        2936
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 43,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 55
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            57
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, (angry:1.1), shouting, open mouth, straight-on, white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch"
+      ],
+      "title": "7 고함 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 40,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        2936
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 76,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 56
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 57
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 58
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 59
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            60
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        762298659345307,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "7 고함 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 41,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        2936
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 102,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 60
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 61
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            62
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "7 고함 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 42,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        2936
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 128,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 62
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_7"
+      ],
+      "title": "7 고함 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 43,
+      "type": "Note",
+      "pos": [
+        3030,
+        2936
+      ],
+      "size": [
+        300,
+        138
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): (angry, shouting, yelling, open mouth:1.36), straight-on\n바꾼 점: yelling 중복 제거, 강도 1.36→1.1"
+      ],
+      "title": "7 고함 · 윤하린 · 메모"
+    },
+    {
+      "id": 44,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        3366
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 44,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 63
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            66
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, crying, streaming tears, (sad:1.1), white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch, white background, simple background"
+      ],
+      "title": "8 울음 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 45,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        3616
+      ],
+      "size": [
+        420,
+        140
+      ],
+      "flags": {},
+      "order": 45,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 64
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            67
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "worst quality, bad quality, low quality, lowres, bad anatomy, bad hands, extra fingers, missing fingers, jpeg artifacts, signature, watermark, text, loli, child, aged down, short hair, ponytail, twintails, braid, blonde hair, multicolored hair, glasses, hat, animal ears, tail, flat chest, petite, blush, school uniform, serafuku"
+      ],
+      "title": "8 울음 · 윤하린 · 네거티브",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 46,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        3366
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 77,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 65
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 66
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 67
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 68
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            69
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        1122132233984434,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "8 울음 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 47,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        3366
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 103,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 69
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 70
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            71
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "8 울음 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 48,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        3366
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 129,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 71
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_8"
+      ],
+      "title": "8 울음 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 49,
+      "type": "Note",
+      "pos": [
+        3030,
+        3366
+      ],
+      "size": [
+        300,
+        192
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): white background, simple background, (crying tears, streaming tears, sad:1.12), (sad:1.3), one ear down\n원본 네거티브: blush\n바꾼 점: sad 두 번→한 번. one ear down은 동물 귀 캐릭터용이라 뺌"
+      ],
+      "title": "8 울음 · 윤하린 · 메모"
+    },
+    {
+      "id": 50,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        3856
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 46,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 72
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            74
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, (laughing:1.1), grin, closed eyes, happy, white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch, white background, simple background"
+      ],
+      "title": "9 웃음 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 51,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        3856
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 78,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 73
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 74
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 75
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 76
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            77
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        1095567853934266,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "9 웃음 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 52,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        3856
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 104,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 77
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 78
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            79
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "9 웃음 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 53,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        3856
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 130,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 79
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_9"
+      ],
+      "title": "9 웃음 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 54,
+      "type": "Note",
+      "pos": [
+        3030,
+        3856
+      ],
+      "size": [
+        300,
+        138
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): white background, simple background, (happy laughing, grin, closed eyes \\(happy\\):1.3)\n바꾼 점: 강도 1.3→1.1"
+      ],
+      "title": "9 웃음 · 윤하린 · 메모"
+    },
+    {
+      "id": 55,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        4286
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 47,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 80
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            82
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, aroused, heavy breathing, full-face blush, heart-shaped pupils, covered nipples, white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch, white background, simple background"
+      ],
+      "title": "10 흥분 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 56,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        4286
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 79,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 81
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 82
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 83
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 84
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            85
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        619034107148603,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "10 흥분 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 57,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        4286
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 105,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 85
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 86
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            87
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "10 흥분 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 58,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        4286
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 131,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 87
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_10"
+      ],
+      "title": "10 흥분 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 59,
+      "type": "Note",
+      "pos": [
+        3030,
+        4286
+      ],
+      "size": [
+        300,
+        192
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): white background, simple background, (aroused, heavy breathing, covered nippls:1.3), flushed face, heart-shaped pupils\n바꾼 점: 오타(nippls) 수정, flushed face→full-face blush"
+      ],
+      "title": "10 흥분 · 윤하린 · 메모"
+    },
+    {
+      "id": 60,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        4716
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 48,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 88
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            90
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, (disgust:1.15), scowl, grimace, white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch, white background, simple background"
+      ],
+      "title": "11 혐오 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 61,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        4716
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 80,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 89
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 90
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 91
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 92
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            93
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        279148787093359,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "11 혐오 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 62,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        4716
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 106,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 93
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 94
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            95
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "11 혐오 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 63,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        4716
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 132,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 95
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_11"
+      ],
+      "title": "11 혐오 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 64,
+      "type": "Note",
+      "pos": [
+        3030,
+        4716
+      ],
+      "size": [
+        300,
+        156
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): white background, simple background, (disgust, grimace, scowling, nose wrinkle:1.5)\n바꾼 점: 강도 1.5→1.15, 비슷한 태그 정리"
+      ],
+      "title": "11 혐오 · 윤하린 · 메모"
+    },
+    {
+      "id": 65,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        5146
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 49,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 96
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            98
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, (glaring:1.15), shaded face, angry, clenched teeth, white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch, white background, simple background"
+      ],
+      "title": "12 증오 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 66,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        5146
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 81,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 97
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 98
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 99
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 100
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            101
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        545970591921964,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "12 증오 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 67,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        5146
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 107,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 101
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 102
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            103
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "12 증오 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 68,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        5146
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 133,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 103
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_12"
+      ],
+      "title": "12 증오 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 69,
+      "type": "Note",
+      "pos": [
+        3030,
+        5146
+      ],
+      "size": [
+        300,
+        174
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): white background, simple background, (hatred, malicious face, glaring, shaded face:1.3)\n바꾼 점: hatred·malicious face는 태그가 아니라 angry, clenched teeth로"
+      ],
+      "title": "12 증오 · 윤하린 · 메모"
+    },
+    {
+      "id": 70,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        5576
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 50,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 104
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            106
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, (confused:1.1), head tilt, ?, thinking, constricted pupils, white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch, white background, simple background"
+      ],
+      "title": "13 갸웃 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 71,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        5576
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 82,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 105
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 106
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 107
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 108
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            109
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        4066380435513,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "13 갸웃 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 72,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        5576
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 108,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 109
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 110
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            111
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "13 갸웃 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 73,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        5576
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 134,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 111
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_13"
+      ],
+      "title": "13 갸웃 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 74,
+      "type": "Note",
+      "pos": [
+        3030,
+        5576
+      ],
+      "size": [
+        300,
+        156
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): white background, simple background, (confused, tilted head, ?, thinking:1.3), constricted pupils\n바꾼 점: tilted head→head tilt"
+      ],
+      "title": "13 갸웃 · 윤하린 · 메모"
+    },
+    {
+      "id": 75,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        6006
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 51,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 112
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            114
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, (seductive smile:1.1), tongue out, half-closed eyes, blush, heart, open mouth, white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch, white background, simple background"
+      ],
+      "title": "14 유혹 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 76,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        6006
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 83,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 113
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 114
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 115
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 116
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            117
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        543663648566000,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "14 유혹 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 77,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        6006
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 109,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 117
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 118
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            119
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "14 유혹 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 78,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        6006
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 135,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 119
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_14"
+      ],
+      "title": "14 유혹 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 79,
+      "type": "Note",
+      "pos": [
+        3030,
+        6006
+      ],
+      "size": [
+        300,
+        192
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): white background, simple background, (seductive:1.5), tongue out, half-closed eyes, sticking out tongue, blush, heart, open mouth\n바꾼 점: sticking out tongue 중복 제거, 강도 1.5→1.1"
+      ],
+      "title": "14 유혹 · 윤하린 · 메모"
+    },
+    {
+      "id": 80,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        6436
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 52,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 120
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            122
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, pout, puffed cheeks, looking away, (crossed arms:1.1), white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch"
+      ],
+      "title": "15 삐짐 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 81,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        6436
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 84,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 121
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 122
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 123
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 124
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            125
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        633455580056101,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "15 삐짐 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 82,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        6436
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 110,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 125
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 126
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            127
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "15 삐짐 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 83,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        6436
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 136,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 127
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_15"
+      ],
+      "title": "15 삐짐 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 84,
+      "type": "Note",
+      "pos": [
+        3030,
+        6436
+      ],
+      "size": [
+        300,
+        156
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): pout, puffed cheeks, looking away, (turning head, crossed arms:1.3)\n원본 네거티브: sweat\n바꾼 점: turning head는 looking away와 겹쳐서 뺌"
+      ],
+      "title": "15 삐짐 · 윤하린 · 메모"
+    },
+    {
+      "id": 85,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        6866
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 53,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 128
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            130
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, (light smile:1.1), blush, looking at viewer, heart, heart-shaped pupils, white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch"
+      ],
+      "title": "16 애정 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 86,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        6866
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 85,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 129
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 130
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 131
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 132
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            133
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        410156695960472,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "16 애정 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 87,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        6866
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 111,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 133
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 134
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            135
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "16 애정 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 88,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        6866
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 137,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 135
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_16"
+      ],
+      "title": "16 애정 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 89,
+      "type": "Note",
+      "pos": [
+        3030,
+        6866
+      ],
+      "size": [
+        300,
+        210
+      ],
+      "flags": {},
+      "order": 18,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): (loving gaze, kind smile:1.3), blush, heart, (floating heart, heart in pupils:1.3)\n원본 네거티브: sweat\n바꾼 점: heart in pupils→heart-shaped pupils, loving gaze→looking at viewer"
+      ],
+      "title": "16 애정 · 윤하린 · 메모"
+    },
+    {
+      "id": 90,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        7296
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 54,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 136
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            139
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, (surprised:1.15), amazed, :o, wide-eyed, white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch"
+      ],
+      "title": "17 감탄 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 91,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        7546
+      ],
+      "size": [
+        420,
+        140
+      ],
+      "flags": {},
+      "order": 55,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 137
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            140
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "worst quality, bad quality, low quality, lowres, bad anatomy, bad hands, extra fingers, missing fingers, jpeg artifacts, signature, watermark, text, loli, child, aged down, short hair, ponytail, twintails, braid, blonde hair, multicolored hair, glasses, hat, animal ears, tail, flat chest, petite, sweat, blush, hands, school uniform, serafuku"
+      ],
+      "title": "17 감탄 · 윤하린 · 네거티브",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 92,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        7296
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 86,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 138
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 139
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 140
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 141
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            142
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        829591569750854,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "17 감탄 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 93,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        7296
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 112,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 142
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 143
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            144
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "17 감탄 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 94,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        7296
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 138,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 144
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_17"
+      ],
+      "title": "17 감탄 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 95,
+      "type": "Note",
+      "pos": [
+        3030,
+        7296
+      ],
+      "size": [
+        300,
+        192
+      ],
+      "flags": {},
+      "order": 19,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): (amazed:1.5), (surprised:1.3), small open mouth, twitching\n원본 네거티브: sweat, blush, hands\n바꾼 점: small open mouth→:o, twitching은 태그가 아니라 뺌"
+      ],
+      "title": "17 감탄 · 윤하린 · 메모"
+    },
+    {
+      "id": 96,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        7786
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 56,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 145
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            147
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, (furious:1.15), anger vein, screaming, open mouth, white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch, white background, simple background"
+      ],
+      "title": "18 격노 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 97,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        7786
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 87,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 146
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 147
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 148
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 149
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            150
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        402920259031599,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "18 격노 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 98,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        7786
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 113,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 150
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 151
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            152
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "18 격노 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 99,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        7786
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 139,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 152
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_18"
+      ],
+      "title": "18 격노 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 100,
+      "type": "Note",
+      "pos": [
+        3030,
+        7786
+      ],
+      "size": [
+        300,
+        192
+      ],
+      "flags": {},
+      "order": 20,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): white background, simple background, (furious, enraged:1.3), vein anime, screaming, (open mouth:1.3)\n원본 네거티브: (sweat:1.3)\n바꾼 점: vein anime→anger vein, enraged 중복 제거"
+      ],
+      "title": "18 격노 · 윤하린 · 메모"
+    },
+    {
+      "id": 101,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        8216
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 57,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 153
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            156
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, :o, (surprised:1.1), wide-eyed, white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch, white background, simple background"
+      ],
+      "title": "19 깜짝 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 102,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        8466
+      ],
+      "size": [
+        420,
+        140
+      ],
+      "flags": {},
+      "order": 58,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 154
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            157
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "worst quality, bad quality, low quality, lowres, bad anatomy, bad hands, extra fingers, missing fingers, jpeg artifacts, signature, watermark, text, loli, child, aged down, short hair, ponytail, twintails, braid, blonde hair, multicolored hair, glasses, hat, animal ears, tail, flat chest, petite, closed eyes, school uniform, serafuku"
+      ],
+      "title": "19 깜짝 · 윤하린 · 네거티브",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 103,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        8216
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 88,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 155
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 156
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 157
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 158
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            159
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        746873911033819,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "19 깜짝 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 104,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        8216
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 114,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 159
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 160
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            161
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "19 깜짝 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 105,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        8216
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 140,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 161
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_19"
+      ],
+      "title": "19 깜짝 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 106,
+      "type": "Note",
+      "pos": [
+        3030,
+        8216
+      ],
+      "size": [
+        300,
+        210
+      ],
+      "flags": {},
+      "order": 21,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): white background, simple background, o-shaped mouth, (surprised, big opened eyes:1.3)\n원본 네거티브: (closed eyes:1.3)\n바꾼 점: o-shaped mouth→:o, big opened eyes→wide-eyed"
+      ],
+      "title": "19 깜짝 · 윤하린 · 메모"
+    },
+    {
+      "id": 107,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        8706
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 59,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 162
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            165
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, (incoming kiss:1.15), pov, close-up, from above, closed eyes, open mouth, tongue, white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch"
+      ],
+      "title": "20 키스 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 108,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        8956
+      ],
+      "size": [
+        420,
+        140
+      ],
+      "flags": {},
+      "order": 60,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 163
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            166
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "worst quality, bad quality, low quality, lowres, bad anatomy, bad hands, extra fingers, missing fingers, jpeg artifacts, signature, watermark, text, loli, child, aged down, short hair, ponytail, twintails, braid, blonde hair, multicolored hair, glasses, hat, animal ears, tail, flat chest, petite, thick lips, school uniform, serafuku"
+      ],
+      "title": "20 키스 · 윤하린 · 네거티브",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 109,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        8706
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 89,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 164
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 165
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 166
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 167
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            168
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        1047968493026637,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "20 키스 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 110,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        8706
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 115,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 168
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 169
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            170
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "20 키스 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 111,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        8706
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 141,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 170
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_20"
+      ],
+      "title": "20 키스 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 112,
+      "type": "Note",
+      "pos": [
+        3030,
+        8706
+      ],
+      "size": [
+        300,
+        300
+      ],
+      "flags": {},
+      "order": 22,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): (from above, close-up, POV shot, first person perspective, kiss face, closed eyes, warm breath, romantic mood, soft focus, detailed facial features, gentle expression, intimate moment:1.3), open mouth, showing tongue, incoming kiss\n원본 네거티브: thirck lips\n바꾼 점: 문장형 묘사(warm breath, romantic mood 등)를 빼고 태그만 남김. 네거티브 오타 수정"
+      ],
+      "title": "20 키스 · 윤하린 · 메모"
+    },
+    {
+      "id": 113,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        9196
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 61,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 171
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            173
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, (shrugging:1.15), palms up, head tilt, ?, bored, white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch"
+      ],
+      "title": "21 으쓱 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 114,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        9196
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 90,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 172
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 173
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 174
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 175
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            176
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        555204961979974,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "21 으쓱 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 115,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        9196
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 116,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 176
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 177
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            178
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "21 으쓱 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 116,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        9196
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 142,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 178
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_21"
+      ],
+      "title": "21 으쓱 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 117,
+      "type": "Note",
+      "pos": [
+        3030,
+        9196
+      ],
+      "size": [
+        300,
+        192
+      ],
+      "flags": {},
+      "order": 23,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): (shrug, ?, both palms up, head tilt, raised shoulders, indifferent expression:1.3)\n원본 네거티브: sweat\n바꾼 점: shrug→shrugging, indifferent expression→bored"
+      ],
+      "title": "21 으쓱 · 윤하린 · 메모"
+    },
+    {
+      "id": 118,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        9626
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 62,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 179
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            181
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, (hands on own hips:1.1), smug, smile, closed eyes, blush, white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch"
+      ],
+      "title": "22 의기양양 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 119,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        9626
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 91,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 180
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 181
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 182
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 183
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            184
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        2134102684606,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "22 의기양양 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 120,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        9626
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 117,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 184
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 185
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            186
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "22 의기양양 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 121,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        9626
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 143,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 186
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_22"
+      ],
+      "title": "22 의기양양 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 122,
+      "type": "Note",
+      "pos": [
+        3030,
+        9626
+      ],
+      "size": [
+        300,
+        192
+      ],
+      "flags": {},
+      "order": 24,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): (blush:1.3), (proud, hands on hips, confident smile, satisfied nod, closed eyes:1.5)\n원본 네거티브: sweat\n바꾼 점: 강도 1.5→1.1, proud·satisfied nod는 태그가 아니라 smug로"
+      ],
+      "title": "22 의기양양 · 윤하린 · 메모"
+    },
+    {
+      "id": 123,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        10056
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 63,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 187
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            189
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, (scared:1.15), turn pale, shaded face, wide-eyed, constricted pupils, open mouth, trembling, tears, sweat, from above, white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch, white background, simple background"
+      ],
+      "title": "23 공포 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 124,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        10056
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 92,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 188
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 189
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 190
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 191
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            192
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        649480459604678,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "23 공포 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 125,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        10056
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 118,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 192
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 193
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            194
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "23 공포 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 126,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        10056
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 144,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 194
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_23"
+      ],
+      "title": "23 공포 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 127,
+      "type": "Note",
+      "pos": [
+        3030,
+        10056
+      ],
+      "size": [
+        300,
+        228
+      ],
+      "flags": {},
+      "order": 25,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): white background, (scared, shaded face, pale face, wide eyes, trembling pupils, open mouth, shivering, horrified, tears, sweat:1.3), from above\n바꾼 점: pale face→turn pale, trembling pupils→constricted pupils, shivering·horrified 중복 정리"
+      ],
+      "title": "23 공포 · 윤하린 · 메모"
+    },
+    {
+      "id": 128,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        10486
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 64,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 195
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            198
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, (dogeza:1.15), completely nude, ass, trembling, from above, (folded clothes:1.1)"
+      ],
+      "title": "24 도게자 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 129,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        10736
+      ],
+      "size": [
+        420,
+        140
+      ],
+      "flags": {},
+      "order": 65,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 196
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            199
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "worst quality, bad quality, low quality, lowres, bad anatomy, bad hands, extra fingers, missing fingers, jpeg artifacts, signature, watermark, text, loli, child, aged down, short hair, ponytail, twintails, braid, blonde hair, multicolored hair, glasses, hat, animal ears, tail, flat chest, petite, from side"
+      ],
+      "title": "24 도게자 · 윤하린 · 네거티브",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 130,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        10486
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 93,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 197
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 198
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 199
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 200
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            201
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        1118465273934839,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "24 도게자 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 131,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        10486
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 119,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 201
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 202
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            203
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "24 도게자 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 132,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        10486
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 145,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 203
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_24"
+      ],
+      "title": "24 도게자 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 133,
+      "type": "Note",
+      "pos": [
+        3030,
+        10486
+      ],
+      "size": [
+        300,
+        174
+      ],
+      "flags": {},
+      "order": 26,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): (dogeza, trembling, completely nude, ass:1.3), (from above:1.06), (folded clothes:1.3)\n원본 네거티브: from side\n바꾼 점: 강도 정리. 엎드린 전신이라 가로 해상도(1216×832)로 바꿈"
+      ],
+      "title": "24 도게자 · 윤하린 · 메모"
+    },
+    {
+      "id": 134,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        10976
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 66,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 204
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            207
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, (crying aqua \\(meme\\):1.15), (wavy mouth:1.1), tearing up, open mouth, screaming, tongue, chibi, comic, deformed, face focus, close-up, from above, white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch"
+      ],
+      "title": "25 아쿠아 울음 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 135,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        11226
+      ],
+      "size": [
+        420,
+        140
+      ],
+      "flags": {},
+      "order": 67,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 205
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            208
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "worst quality, bad quality, low quality, lowres, bad anatomy, bad hands, extra fingers, missing fingers, jpeg artifacts, signature, watermark, text, loli, child, aged down, short hair, ponytail, twintails, braid, blonde hair, multicolored hair, glasses, hat, animal ears, tail, flat chest, petite, full body, lower body, armpits, blue hair, school uniform, serafuku"
+      ],
+      "title": "25 아쿠아 울음 · 윤하린 · 네거티브",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 136,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        10976
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 94,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 206
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 207
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 208
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 209
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            210
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        557204660640338,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "25 아쿠아 울음 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 137,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        10976
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 120,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 210
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 211
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            212
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "25 아쿠아 울음 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 138,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        10976
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 146,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 212
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_25"
+      ],
+      "title": "25 아쿠아 울음 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 139,
+      "type": "Note",
+      "pos": [
+        3030,
+        10976
+      ],
+      "size": [
+        300,
+        354
+      ],
+      "flags": {},
+      "order": 27,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): (crying aqua \\(meme\\):1.5), (wavy mouth:1.5), (chibi, comic, deformed:1.06), tearing up, open mouth, (face focus, close-up, from above:1.5), (deformed:1.15), upper body, (tongue:1.12), (screaming:1.15), (face focus:1.5), chibi, comic\n원본 네거티브: full body, lower body, armpits\n바꾼 점: 두세 번씩 반복된 chibi·comic·deformed·face focus를 한 번씩만. 밈 태그가 아쿠아의 파란 머리를 끌어오지 않게 네거티브에 blue hair 추가"
+      ],
+      "title": "25 아쿠아 울음 · 윤하린 · 메모"
+    },
+    {
+      "id": 140,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        11466
+      ],
+      "size": [
+        420,
+        180
+      ],
+      "flags": {},
+      "order": 68,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 213
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            216
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, 1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings, sitting, couch, (pregnant:1.1), indoors, living room, smile, happy, from above, from side, looking at viewer, hands on own stomach, (loose clothes:1.15), camisole"
+      ],
+      "title": "80 임신 · 윤하린",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 141,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1560,
+        11716
+      ],
+      "size": [
+        420,
+        140
+      ],
+      "flags": {},
+      "order": 69,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 214
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            217
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "worst quality, bad quality, low quality, lowres, bad anatomy, bad hands, extra fingers, missing fingers, jpeg artifacts, signature, watermark, text, loli, child, aged down, short hair, ponytail, twintails, braid, blonde hair, multicolored hair, glasses, hat, animal ears, tail, flat chest, petite, white background, simple background"
+      ],
+      "title": "80 임신 · 윤하린 · 네거티브",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 142,
+      "type": "KSampler",
+      "pos": [
+        2030,
+        11466
+      ],
+      "size": [
+        320,
+        262
+      ],
+      "flags": {},
+      "order": 95,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 215
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 216
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 217
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 218
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            219
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        648426675179277,
+        "randomize",
+        28,
+        5.5,
+        "euler_ancestral",
+        "normal",
+        1
+      ],
+      "title": "80 임신 · 윤하린 · 샘플러",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 143,
+      "type": "VAEDecode",
+      "pos": [
+        2400,
+        11466
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 121,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 219
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 220
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            221
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "80 임신 · 윤하린 · 디코드",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 144,
+      "type": "SaveImage",
+      "pos": [
+        2660,
+        11466
+      ],
+      "size": [
+        320,
+        330
+      ],
+      "flags": {},
+      "order": 147,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 221
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "harin/harin_80"
+      ],
+      "title": "80 임신 · 윤하린 · 저장",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    },
+    {
+      "id": 145,
+      "type": "Note",
+      "pos": [
+        3030,
+        11466
+      ],
+      "size": [
+        300,
+        264
+      ],
+      "flags": {},
+      "order": 28,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "장면 메모: 원본(nAI): sitting on sofa, (pregnant:1.15), indoors, smile, happy, from above, from side, looking at viewer, hands on own stomach, (loose clothes:1.5), camisole\n원본 네거티브: white background, simple background\n바꾼 점: sofa→couch, loose clothes 강도 1.5→1.15. 캐미솔 차림이라 기본 의상 조각은 뺌"
+      ],
+      "title": "80 임신 · 윤하린 · 메모"
+    },
+    {
+      "id": 146,
+      "type": "Note",
+      "pos": [
+        0,
+        30
+      ],
+      "size": [
+        560,
+        264
+      ],
+      "flags": {},
+      "order": 29,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "[초안] 윤하린 · 장면 26종 · 2026. 10. 10. 10시 42분 16초\n미정 줄 26개를 담았습니다. 실행할 때마다 줄마다 한 장씩 저장됩니다.\n· 후보를 늘리려면 실행 버튼의 반복 횟수(Batch count)를 올리세요. 시드는 실행마다 바뀝니다.\n· 마음에 드는 PNG를 도구의 [확정·내보내기] 화면에 끌어다 놓으면 그 줄의 시드가 고정됩니다.\n· \"시드 공유\" 노드가 있는 그룹은 구도 맞추기 그룹입니다. 같은 캐릭터의 줄이 시드 하나를 함께 씁니다.\n· 프롬프트와 설정은 도구에서 고치세요. 여기서 고친 내용은 도구로 돌아가지 않습니다.\n· 이름에 \"(꺼짐: …)\"이 붙은 저장 노드는 대상이 아닌 줄입니다. Ctrl+M으로 다시 켤 수 있습니다."
+      ],
+      "title": "사용법"
+    },
+    {
+      "id": 147,
+      "type": "Note",
+      "pos": [
+        1560,
+        30
+      ],
+      "size": [
+        600,
+        84
+      ],
+      "flags": {},
+      "order": 30,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "nais2에서 쓰던 장면 26종(코드 1~25, 80). nAI용으로 과하게 넣었던 중복 태그와 1.3~1.5 강도는 SDXL(Illustrious)에 맞게 1.1~1.15로 낮췄다. 각 장면 주석에 원본 프롬프트를 남겼다."
+      ],
+      "title": "내 장면 · 그룹 메모"
+    },
+    {
+      "id": 148,
+      "type": "Note",
+      "pos": [
+        1560,
+        184
+      ],
+      "size": [
+        420,
+        102
+      ],
+      "flags": {},
+      "order": 31,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "샘플 캐릭터(성인 여성). 외형·악세사리는 캐릭터 프롬프트에, 옷은 \"하린 기본 의상\" 조각에 따로 두었다. 옷을 벗거나 갈아입는 장면(24, 80)에는 의상 조각을 빼 두었다."
+      ],
+      "title": "윤하린 · 캐릭터 메모",
+      "color": "#684781",
+      "bgcolor": "#5e496e"
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      2,
+      0,
+      "MODEL"
+    ],
+    [
+      2,
+      1,
+      1,
+      2,
+      1,
+      "CLIP"
+    ],
+    [
+      3,
+      2,
+      1,
+      3,
+      0,
+      "CLIP"
+    ],
+    [
+      4,
+      3,
+      0,
+      4,
+      0,
+      "CLIP"
+    ],
+    [
+      5,
+      3,
+      0,
+      5,
+      0,
+      "CLIP"
+    ],
+    [
+      6,
+      3,
+      0,
+      6,
+      0,
+      "CLIP"
+    ],
+    [
+      7,
+      3,
+      0,
+      9,
+      0,
+      "CLIP"
+    ],
+    [
+      8,
+      2,
+      0,
+      10,
+      0,
+      "MODEL"
+    ],
+    [
+      9,
+      9,
+      0,
+      10,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      10,
+      4,
+      0,
+      10,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      11,
+      7,
+      0,
+      10,
+      3,
+      "LATENT"
+    ],
+    [
+      12,
+      10,
+      0,
+      11,
+      0,
+      "LATENT"
+    ],
+    [
+      13,
+      1,
+      2,
+      11,
+      1,
+      "VAE"
+    ],
+    [
+      14,
+      11,
+      0,
+      12,
+      0,
+      "IMAGE"
+    ],
+    [
+      15,
+      3,
+      0,
+      14,
+      0,
+      "CLIP"
+    ],
+    [
+      16,
+      2,
+      0,
+      15,
+      0,
+      "MODEL"
+    ],
+    [
+      17,
+      14,
+      0,
+      15,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      18,
+      5,
+      0,
+      15,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      19,
+      7,
+      0,
+      15,
+      3,
+      "LATENT"
+    ],
+    [
+      20,
+      15,
+      0,
+      16,
+      0,
+      "LATENT"
+    ],
+    [
+      21,
+      1,
+      2,
+      16,
+      1,
+      "VAE"
+    ],
+    [
+      22,
+      16,
+      0,
+      17,
+      0,
+      "IMAGE"
+    ],
+    [
+      23,
+      3,
+      0,
+      19,
+      0,
+      "CLIP"
+    ],
+    [
+      24,
+      2,
+      0,
+      20,
+      0,
+      "MODEL"
+    ],
+    [
+      25,
+      19,
+      0,
+      20,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      26,
+      6,
+      0,
+      20,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      27,
+      7,
+      0,
+      20,
+      3,
+      "LATENT"
+    ],
+    [
+      28,
+      20,
+      0,
+      21,
+      0,
+      "LATENT"
+    ],
+    [
+      29,
+      1,
+      2,
+      21,
+      1,
+      "VAE"
+    ],
+    [
+      30,
+      21,
+      0,
+      22,
+      0,
+      "IMAGE"
+    ],
+    [
+      31,
+      3,
+      0,
+      24,
+      0,
+      "CLIP"
+    ],
+    [
+      32,
+      2,
+      0,
+      25,
+      0,
+      "MODEL"
+    ],
+    [
+      33,
+      24,
+      0,
+      25,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      34,
+      5,
+      0,
+      25,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      35,
+      7,
+      0,
+      25,
+      3,
+      "LATENT"
+    ],
+    [
+      36,
+      25,
+      0,
+      26,
+      0,
+      "LATENT"
+    ],
+    [
+      37,
+      1,
+      2,
+      26,
+      1,
+      "VAE"
+    ],
+    [
+      38,
+      26,
+      0,
+      27,
+      0,
+      "IMAGE"
+    ],
+    [
+      39,
+      3,
+      0,
+      29,
+      0,
+      "CLIP"
+    ],
+    [
+      40,
+      2,
+      0,
+      30,
+      0,
+      "MODEL"
+    ],
+    [
+      41,
+      29,
+      0,
+      30,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      42,
+      5,
+      0,
+      30,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      43,
+      7,
+      0,
+      30,
+      3,
+      "LATENT"
+    ],
+    [
+      44,
+      30,
+      0,
+      31,
+      0,
+      "LATENT"
+    ],
+    [
+      45,
+      1,
+      2,
+      31,
+      1,
+      "VAE"
+    ],
+    [
+      46,
+      31,
+      0,
+      32,
+      0,
+      "IMAGE"
+    ],
+    [
+      47,
+      3,
+      0,
+      34,
+      0,
+      "CLIP"
+    ],
+    [
+      48,
+      2,
+      0,
+      35,
+      0,
+      "MODEL"
+    ],
+    [
+      49,
+      34,
+      0,
+      35,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      50,
+      6,
+      0,
+      35,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      51,
+      7,
+      0,
+      35,
+      3,
+      "LATENT"
+    ],
+    [
+      52,
+      35,
+      0,
+      36,
+      0,
+      "LATENT"
+    ],
+    [
+      53,
+      1,
+      2,
+      36,
+      1,
+      "VAE"
+    ],
+    [
+      54,
+      36,
+      0,
+      37,
+      0,
+      "IMAGE"
+    ],
+    [
+      55,
+      3,
+      0,
+      39,
+      0,
+      "CLIP"
+    ],
+    [
+      56,
+      2,
+      0,
+      40,
+      0,
+      "MODEL"
+    ],
+    [
+      57,
+      39,
+      0,
+      40,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      58,
+      5,
+      0,
+      40,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      59,
+      7,
+      0,
+      40,
+      3,
+      "LATENT"
+    ],
+    [
+      60,
+      40,
+      0,
+      41,
+      0,
+      "LATENT"
+    ],
+    [
+      61,
+      1,
+      2,
+      41,
+      1,
+      "VAE"
+    ],
+    [
+      62,
+      41,
+      0,
+      42,
+      0,
+      "IMAGE"
+    ],
+    [
+      63,
+      3,
+      0,
+      44,
+      0,
+      "CLIP"
+    ],
+    [
+      64,
+      3,
+      0,
+      45,
+      0,
+      "CLIP"
+    ],
+    [
+      65,
+      2,
+      0,
+      46,
+      0,
+      "MODEL"
+    ],
+    [
+      66,
+      44,
+      0,
+      46,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      67,
+      45,
+      0,
+      46,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      68,
+      7,
+      0,
+      46,
+      3,
+      "LATENT"
+    ],
+    [
+      69,
+      46,
+      0,
+      47,
+      0,
+      "LATENT"
+    ],
+    [
+      70,
+      1,
+      2,
+      47,
+      1,
+      "VAE"
+    ],
+    [
+      71,
+      47,
+      0,
+      48,
+      0,
+      "IMAGE"
+    ],
+    [
+      72,
+      3,
+      0,
+      50,
+      0,
+      "CLIP"
+    ],
+    [
+      73,
+      2,
+      0,
+      51,
+      0,
+      "MODEL"
+    ],
+    [
+      74,
+      50,
+      0,
+      51,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      75,
+      5,
+      0,
+      51,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      76,
+      7,
+      0,
+      51,
+      3,
+      "LATENT"
+    ],
+    [
+      77,
+      51,
+      0,
+      52,
+      0,
+      "LATENT"
+    ],
+    [
+      78,
+      1,
+      2,
+      52,
+      1,
+      "VAE"
+    ],
+    [
+      79,
+      52,
+      0,
+      53,
+      0,
+      "IMAGE"
+    ],
+    [
+      80,
+      3,
+      0,
+      55,
+      0,
+      "CLIP"
+    ],
+    [
+      81,
+      2,
+      0,
+      56,
+      0,
+      "MODEL"
+    ],
+    [
+      82,
+      55,
+      0,
+      56,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      83,
+      5,
+      0,
+      56,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      84,
+      7,
+      0,
+      56,
+      3,
+      "LATENT"
+    ],
+    [
+      85,
+      56,
+      0,
+      57,
+      0,
+      "LATENT"
+    ],
+    [
+      86,
+      1,
+      2,
+      57,
+      1,
+      "VAE"
+    ],
+    [
+      87,
+      57,
+      0,
+      58,
+      0,
+      "IMAGE"
+    ],
+    [
+      88,
+      3,
+      0,
+      60,
+      0,
+      "CLIP"
+    ],
+    [
+      89,
+      2,
+      0,
+      61,
+      0,
+      "MODEL"
+    ],
+    [
+      90,
+      60,
+      0,
+      61,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      91,
+      5,
+      0,
+      61,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      92,
+      7,
+      0,
+      61,
+      3,
+      "LATENT"
+    ],
+    [
+      93,
+      61,
+      0,
+      62,
+      0,
+      "LATENT"
+    ],
+    [
+      94,
+      1,
+      2,
+      62,
+      1,
+      "VAE"
+    ],
+    [
+      95,
+      62,
+      0,
+      63,
+      0,
+      "IMAGE"
+    ],
+    [
+      96,
+      3,
+      0,
+      65,
+      0,
+      "CLIP"
+    ],
+    [
+      97,
+      2,
+      0,
+      66,
+      0,
+      "MODEL"
+    ],
+    [
+      98,
+      65,
+      0,
+      66,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      99,
+      5,
+      0,
+      66,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      100,
+      7,
+      0,
+      66,
+      3,
+      "LATENT"
+    ],
+    [
+      101,
+      66,
+      0,
+      67,
+      0,
+      "LATENT"
+    ],
+    [
+      102,
+      1,
+      2,
+      67,
+      1,
+      "VAE"
+    ],
+    [
+      103,
+      67,
+      0,
+      68,
+      0,
+      "IMAGE"
+    ],
+    [
+      104,
+      3,
+      0,
+      70,
+      0,
+      "CLIP"
+    ],
+    [
+      105,
+      2,
+      0,
+      71,
+      0,
+      "MODEL"
+    ],
+    [
+      106,
+      70,
+      0,
+      71,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      107,
+      5,
+      0,
+      71,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      108,
+      7,
+      0,
+      71,
+      3,
+      "LATENT"
+    ],
+    [
+      109,
+      71,
+      0,
+      72,
+      0,
+      "LATENT"
+    ],
+    [
+      110,
+      1,
+      2,
+      72,
+      1,
+      "VAE"
+    ],
+    [
+      111,
+      72,
+      0,
+      73,
+      0,
+      "IMAGE"
+    ],
+    [
+      112,
+      3,
+      0,
+      75,
+      0,
+      "CLIP"
+    ],
+    [
+      113,
+      2,
+      0,
+      76,
+      0,
+      "MODEL"
+    ],
+    [
+      114,
+      75,
+      0,
+      76,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      115,
+      5,
+      0,
+      76,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      116,
+      7,
+      0,
+      76,
+      3,
+      "LATENT"
+    ],
+    [
+      117,
+      76,
+      0,
+      77,
+      0,
+      "LATENT"
+    ],
+    [
+      118,
+      1,
+      2,
+      77,
+      1,
+      "VAE"
+    ],
+    [
+      119,
+      77,
+      0,
+      78,
+      0,
+      "IMAGE"
+    ],
+    [
+      120,
+      3,
+      0,
+      80,
+      0,
+      "CLIP"
+    ],
+    [
+      121,
+      2,
+      0,
+      81,
+      0,
+      "MODEL"
+    ],
+    [
+      122,
+      80,
+      0,
+      81,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      123,
+      4,
+      0,
+      81,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      124,
+      7,
+      0,
+      81,
+      3,
+      "LATENT"
+    ],
+    [
+      125,
+      81,
+      0,
+      82,
+      0,
+      "LATENT"
+    ],
+    [
+      126,
+      1,
+      2,
+      82,
+      1,
+      "VAE"
+    ],
+    [
+      127,
+      82,
+      0,
+      83,
+      0,
+      "IMAGE"
+    ],
+    [
+      128,
+      3,
+      0,
+      85,
+      0,
+      "CLIP"
+    ],
+    [
+      129,
+      2,
+      0,
+      86,
+      0,
+      "MODEL"
+    ],
+    [
+      130,
+      85,
+      0,
+      86,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      131,
+      4,
+      0,
+      86,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      132,
+      7,
+      0,
+      86,
+      3,
+      "LATENT"
+    ],
+    [
+      133,
+      86,
+      0,
+      87,
+      0,
+      "LATENT"
+    ],
+    [
+      134,
+      1,
+      2,
+      87,
+      1,
+      "VAE"
+    ],
+    [
+      135,
+      87,
+      0,
+      88,
+      0,
+      "IMAGE"
+    ],
+    [
+      136,
+      3,
+      0,
+      90,
+      0,
+      "CLIP"
+    ],
+    [
+      137,
+      3,
+      0,
+      91,
+      0,
+      "CLIP"
+    ],
+    [
+      138,
+      2,
+      0,
+      92,
+      0,
+      "MODEL"
+    ],
+    [
+      139,
+      90,
+      0,
+      92,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      140,
+      91,
+      0,
+      92,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      141,
+      7,
+      0,
+      92,
+      3,
+      "LATENT"
+    ],
+    [
+      142,
+      92,
+      0,
+      93,
+      0,
+      "LATENT"
+    ],
+    [
+      143,
+      1,
+      2,
+      93,
+      1,
+      "VAE"
+    ],
+    [
+      144,
+      93,
+      0,
+      94,
+      0,
+      "IMAGE"
+    ],
+    [
+      145,
+      3,
+      0,
+      96,
+      0,
+      "CLIP"
+    ],
+    [
+      146,
+      2,
+      0,
+      97,
+      0,
+      "MODEL"
+    ],
+    [
+      147,
+      96,
+      0,
+      97,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      148,
+      4,
+      0,
+      97,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      149,
+      7,
+      0,
+      97,
+      3,
+      "LATENT"
+    ],
+    [
+      150,
+      97,
+      0,
+      98,
+      0,
+      "LATENT"
+    ],
+    [
+      151,
+      1,
+      2,
+      98,
+      1,
+      "VAE"
+    ],
+    [
+      152,
+      98,
+      0,
+      99,
+      0,
+      "IMAGE"
+    ],
+    [
+      153,
+      3,
+      0,
+      101,
+      0,
+      "CLIP"
+    ],
+    [
+      154,
+      3,
+      0,
+      102,
+      0,
+      "CLIP"
+    ],
+    [
+      155,
+      2,
+      0,
+      103,
+      0,
+      "MODEL"
+    ],
+    [
+      156,
+      101,
+      0,
+      103,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      157,
+      102,
+      0,
+      103,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      158,
+      7,
+      0,
+      103,
+      3,
+      "LATENT"
+    ],
+    [
+      159,
+      103,
+      0,
+      104,
+      0,
+      "LATENT"
+    ],
+    [
+      160,
+      1,
+      2,
+      104,
+      1,
+      "VAE"
+    ],
+    [
+      161,
+      104,
+      0,
+      105,
+      0,
+      "IMAGE"
+    ],
+    [
+      162,
+      3,
+      0,
+      107,
+      0,
+      "CLIP"
+    ],
+    [
+      163,
+      3,
+      0,
+      108,
+      0,
+      "CLIP"
+    ],
+    [
+      164,
+      2,
+      0,
+      109,
+      0,
+      "MODEL"
+    ],
+    [
+      165,
+      107,
+      0,
+      109,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      166,
+      108,
+      0,
+      109,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      167,
+      7,
+      0,
+      109,
+      3,
+      "LATENT"
+    ],
+    [
+      168,
+      109,
+      0,
+      110,
+      0,
+      "LATENT"
+    ],
+    [
+      169,
+      1,
+      2,
+      110,
+      1,
+      "VAE"
+    ],
+    [
+      170,
+      110,
+      0,
+      111,
+      0,
+      "IMAGE"
+    ],
+    [
+      171,
+      3,
+      0,
+      113,
+      0,
+      "CLIP"
+    ],
+    [
+      172,
+      2,
+      0,
+      114,
+      0,
+      "MODEL"
+    ],
+    [
+      173,
+      113,
+      0,
+      114,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      174,
+      4,
+      0,
+      114,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      175,
+      7,
+      0,
+      114,
+      3,
+      "LATENT"
+    ],
+    [
+      176,
+      114,
+      0,
+      115,
+      0,
+      "LATENT"
+    ],
+    [
+      177,
+      1,
+      2,
+      115,
+      1,
+      "VAE"
+    ],
+    [
+      178,
+      115,
+      0,
+      116,
+      0,
+      "IMAGE"
+    ],
+    [
+      179,
+      3,
+      0,
+      118,
+      0,
+      "CLIP"
+    ],
+    [
+      180,
+      2,
+      0,
+      119,
+      0,
+      "MODEL"
+    ],
+    [
+      181,
+      118,
+      0,
+      119,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      182,
+      4,
+      0,
+      119,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      183,
+      7,
+      0,
+      119,
+      3,
+      "LATENT"
+    ],
+    [
+      184,
+      119,
+      0,
+      120,
+      0,
+      "LATENT"
+    ],
+    [
+      185,
+      1,
+      2,
+      120,
+      1,
+      "VAE"
+    ],
+    [
+      186,
+      120,
+      0,
+      121,
+      0,
+      "IMAGE"
+    ],
+    [
+      187,
+      3,
+      0,
+      123,
+      0,
+      "CLIP"
+    ],
+    [
+      188,
+      2,
+      0,
+      124,
+      0,
+      "MODEL"
+    ],
+    [
+      189,
+      123,
+      0,
+      124,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      190,
+      5,
+      0,
+      124,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      191,
+      7,
+      0,
+      124,
+      3,
+      "LATENT"
+    ],
+    [
+      192,
+      124,
+      0,
+      125,
+      0,
+      "LATENT"
+    ],
+    [
+      193,
+      1,
+      2,
+      125,
+      1,
+      "VAE"
+    ],
+    [
+      194,
+      125,
+      0,
+      126,
+      0,
+      "IMAGE"
+    ],
+    [
+      195,
+      3,
+      0,
+      128,
+      0,
+      "CLIP"
+    ],
+    [
+      196,
+      3,
+      0,
+      129,
+      0,
+      "CLIP"
+    ],
+    [
+      197,
+      2,
+      0,
+      130,
+      0,
+      "MODEL"
+    ],
+    [
+      198,
+      128,
+      0,
+      130,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      199,
+      129,
+      0,
+      130,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      200,
+      8,
+      0,
+      130,
+      3,
+      "LATENT"
+    ],
+    [
+      201,
+      130,
+      0,
+      131,
+      0,
+      "LATENT"
+    ],
+    [
+      202,
+      1,
+      2,
+      131,
+      1,
+      "VAE"
+    ],
+    [
+      203,
+      131,
+      0,
+      132,
+      0,
+      "IMAGE"
+    ],
+    [
+      204,
+      3,
+      0,
+      134,
+      0,
+      "CLIP"
+    ],
+    [
+      205,
+      3,
+      0,
+      135,
+      0,
+      "CLIP"
+    ],
+    [
+      206,
+      2,
+      0,
+      136,
+      0,
+      "MODEL"
+    ],
+    [
+      207,
+      134,
+      0,
+      136,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      208,
+      135,
+      0,
+      136,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      209,
+      7,
+      0,
+      136,
+      3,
+      "LATENT"
+    ],
+    [
+      210,
+      136,
+      0,
+      137,
+      0,
+      "LATENT"
+    ],
+    [
+      211,
+      1,
+      2,
+      137,
+      1,
+      "VAE"
+    ],
+    [
+      212,
+      137,
+      0,
+      138,
+      0,
+      "IMAGE"
+    ],
+    [
+      213,
+      3,
+      0,
+      140,
+      0,
+      "CLIP"
+    ],
+    [
+      214,
+      3,
+      0,
+      141,
+      0,
+      "CLIP"
+    ],
+    [
+      215,
+      2,
+      0,
+      142,
+      0,
+      "MODEL"
+    ],
+    [
+      216,
+      140,
+      0,
+      142,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      217,
+      141,
+      0,
+      142,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      218,
+      7,
+      0,
+      142,
+      3,
+      "LATENT"
+    ],
+    [
+      219,
+      142,
+      0,
+      143,
+      0,
+      "LATENT"
+    ],
+    [
+      220,
+      1,
+      2,
+      143,
+      1,
+      "VAE"
+    ],
+    [
+      221,
+      143,
+      0,
+      144,
+      0,
+      "IMAGE"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "공통 · 모델 / 로라 / 네거티브 / 크기",
+      "bounding": [
+        -30,
+        -86,
+        1420,
+        1320
+      ],
+      "color": "#444466",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "내 장면 · 여러 크기 · 26장",
+      "bounding": [
+        1530,
+        -86,
+        1830,
+        11972
+      ],
+      "color": "#88aa77",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.45,
+      "offset": [
+        80,
+        120
+      ]
+    },
+    "assetTool": {
+      "tool": "comfy-asset-tool",
+      "format": 1,
+      "mode": "draft",
+      "project": "prj_201y2343703g",
+      "projectName": "윤하린 · 장면 26종",
+      "generatedAt": "2026-10-10T10:42:16.067Z",
+      "rows": 26,
+      "targets": 26
+    }
+  },
+  "version": 0.4
+}
