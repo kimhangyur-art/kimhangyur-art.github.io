@@ -5,7 +5,7 @@ import { planGeneration, type GenMode } from '../plan';
 import type { Project } from '../types';
 import { emptyLibrary, ids, row, sampleProject } from '../../test/fixtures';
 import { isLink, toApiPrompt, type ApiPrompt } from './apiPrompt';
-import { buildWorkflow } from './generate';
+import { buildWorkflow, stageAvailable, type PostStage } from './generate';
 import type { Workflow } from './graph';
 import { groupOfNode, validateWorkflow } from './validate';
 
@@ -215,6 +215,31 @@ describe('마무리', () => {
     expect(cur[0]).toBe(String(rn.ksampler));
     expect(chain).toEqual(between);
     if (method === 'model') expect(nodesOf(workflow, 'UpscaleModelLoader')).toHaveLength(1);
+  });
+
+  it('후처리 단계 자리: 마무리에서만 디코드와 저장 사이에 끼운다', () => {
+    const p = sampleProject();
+    confirmAll(p);
+    const lib = emptyLibrary();
+    const stage: PostStage = {
+      id: 'test',
+      label: '시험',
+      requiredNodes: ['ImageScale'],
+      apply(gb, image, row) {
+        const n = gb.add('ImageScale', { title: `${row.title} · 후처리`, widgets: { upscale_method: 'lanczos', width: 0, height: 0, crop: 'disabled' } });
+        gb.connect(image, 0, n, 'image');
+        return { output: n, nodes: [n] };
+      },
+    };
+    expect(stageAvailable(stage, ['ImageScale'])).toBe(true);
+    expect(stageAvailable(stage, undefined)).toBe(false);
+    const fin = buildWorkflow(p, lib, planGeneration(p, lib, { mode: 'finalize' }), { postStages: [stage] });
+    const prompt = toApiPrompt(fin.workflow);
+    const save = Object.values(prompt).find((n) => n.class_type === 'SaveImage')!;
+    expect(prompt[(save.inputs.images as [string, number])[0]]._meta?.title).toMatch(/후처리/);
+    expect(validateWorkflow(fin.workflow, { checkOverlap: true })).toEqual([]);
+    const draft = buildWorkflow(p, lib, planGeneration(p, lib, { mode: 'draft', includeNonTarget: true }), { postStages: [stage] });
+    expect(draft.workflow.nodes.some((n) => n.title?.includes('후처리'))).toBe(false);
   });
 
   it('초안과 마무리의 기본 단계(프롬프트·해상도·steps·cfg·샘플러·스케줄러·시드)가 똑같다', () => {
