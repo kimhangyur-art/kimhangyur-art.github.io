@@ -1,0 +1,4860 @@
+{
+  "id": "b27f64cc-ebf3-4319-a6e5-d26131be9134",
+  "revision": 0,
+  "last_node_id": 72,
+  "last_link_id": 160,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "CheckpointLoaderSimple",
+      "pos": [
+        40,
+        120
+      ],
+      "size": [
+        300,
+        98
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            1
+          ]
+        },
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            2
+          ]
+        },
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            16,
+            29,
+            42,
+            55,
+            68,
+            81,
+            94,
+            107,
+            120,
+            133,
+            146,
+            159
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CheckpointLoaderSimple"
+      },
+      "widgets_values": [
+        "waiIllustriousSDXL_v170.safetensors"
+      ]
+    },
+    {
+      "id": 2,
+      "type": "LoraLoader",
+      "pos": [
+        40,
+        280
+      ],
+      "size": [
+        300,
+        126
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 1
+        },
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 2
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            8,
+            21,
+            34,
+            47,
+            60,
+            73,
+            86,
+            99,
+            112,
+            125,
+            138,
+            151
+          ]
+        },
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            3
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoraLoader"
+      },
+      "widgets_values": [
+        "gyeol.safetensors",
+        1,
+        1
+      ]
+    },
+    {
+      "id": 3,
+      "type": "CLIPSetLastLayer",
+      "pos": [
+        40,
+        470
+      ],
+      "size": [
+        300,
+        58
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 3
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            4,
+            6,
+            19,
+            32,
+            45,
+            58,
+            71,
+            84,
+            97,
+            110,
+            123,
+            136,
+            149
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPSetLastLayer"
+      },
+      "widgets_values": [
+        -2
+      ],
+      "title": "CLIP skip 2"
+    },
+    {
+      "id": 4,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        380,
+        120
+      ],
+      "size": [
+        400,
+        170
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            5,
+            18,
+            31,
+            44,
+            57,
+            70,
+            83,
+            96,
+            109,
+            122,
+            135,
+            148
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, amazing quality, very aesthetic, hex maniac (pokemon), 1girl, solo, long hair, messy hair, purple hair, purple eyes, purple hairband, black dress, long sleeves, pale skin"
+      ],
+      "title": "캐릭터 프롬프트 (품질 + 외형)",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 5,
+      "type": "CLIPTextEncode",
+      "pos": [
+        380,
+        340
+      ],
+      "size": [
+        400,
+        150
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 4
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            10,
+            23,
+            36,
+            49,
+            62,
+            75,
+            88,
+            101,
+            114,
+            127,
+            140,
+            153
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "worst quality, bad quality, low quality, lowres, bad anatomy, bad hands, extra fingers, missing fingers, jpeg artifacts, signature, watermark, text, sketch, sweat, nsfw"
+      ],
+      "title": "네거티브 프롬프트 (공통)",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 6,
+      "type": "PrimitiveString",
+      "pos": [
+        380,
+        540
+      ],
+      "size": [
+        400,
+        58
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "char"
+      },
+      "widgets_values": [
+        "hexmaniac"
+      ],
+      "title": "저장 폴더명",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 7,
+      "type": "PrimitiveInt",
+      "pos": [
+        380,
+        650
+      ],
+      "size": [
+        190,
+        82
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "INT",
+          "type": "INT",
+          "links": [
+            12,
+            25,
+            38,
+            51,
+            64,
+            77,
+            90,
+            103,
+            116,
+            129,
+            142,
+            155
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PrimitiveInt"
+      },
+      "widgets_values": [
+        123456789,
+        "randomize"
+      ],
+      "title": "seed (공통)"
+    },
+    {
+      "id": 8,
+      "type": "PrimitiveInt",
+      "pos": [
+        590,
+        650
+      ],
+      "size": [
+        190,
+        82
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "INT",
+          "type": "INT",
+          "links": [
+            13,
+            26,
+            39,
+            52,
+            65,
+            78,
+            91,
+            104,
+            117,
+            130,
+            143,
+            156
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PrimitiveInt"
+      },
+      "widgets_values": [
+        28,
+        "fixed"
+      ],
+      "title": "steps (공통)"
+    },
+    {
+      "id": 9,
+      "type": "PrimitiveFloat",
+      "pos": [
+        380,
+        780
+      ],
+      "size": [
+        190,
+        58
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "FLOAT",
+          "type": "FLOAT",
+          "links": [
+            14,
+            27,
+            40,
+            53,
+            66,
+            79,
+            92,
+            105,
+            118,
+            131,
+            144,
+            157
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PrimitiveFloat"
+      },
+      "widgets_values": [
+        5.0
+      ],
+      "title": "cfg (공통)"
+    },
+    {
+      "id": 10,
+      "type": "EmptyLatentImage",
+      "pos": [
+        40,
+        590
+      ],
+      "size": [
+        300,
+        106
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            11,
+            24,
+            37,
+            50,
+            63,
+            76,
+            89
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "EmptyLatentImage"
+      },
+      "widgets_values": [
+        1024,
+        1024,
+        1
+      ],
+      "title": "표정용 크기"
+    },
+    {
+      "id": 11,
+      "type": "EmptyLatentImage",
+      "pos": [
+        40,
+        750
+      ],
+      "size": [
+        300,
+        106
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            102,
+            115,
+            128,
+            141,
+            154
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "EmptyLatentImage"
+      },
+      "widgets_values": [
+        832,
+        1216,
+        1
+      ],
+      "title": "상황용 크기"
+    },
+    {
+      "id": 12,
+      "type": "Note",
+      "pos": [
+        40,
+        910
+      ],
+      "size": [
+        740,
+        230
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "text": ""
+      },
+      "widgets_values": [
+        "[사용법]\n1. 녹색 노드만 고치면 12장 전체에 적용됩니다.\n   - 캐릭터 프롬프트: 품질 태그 + 캐릭터 외형 (나중에 캐릭터 LoRA 트리거 단어로 교체)\n   - 저장 폴더명: output/<폴더명>/<상황코드>_00001_.png 로 저장됩니다.\n2. 각 줄의 'Concatenate Text' 노드 아래 칸(string_b)이 상황별 프롬프트입니다.\n3. seed는 12장이 같은 값을 씁니다. 마음에 드는 세트가 나오면 seed 노드를 fixed로 바꾸세요.\n4. 특정 줄만 끄려면 그 줄의 이미지 저장 노드를 선택하고 Ctrl+B (우회).\n5. 접힌 노드(CLIP 인코딩 / KSampler / VAE 디코드)는 왼쪽 점을 눌러 펼칠 수 있습니다."
+      ],
+      "title": "사용법"
+    },
+    {
+      "id": 13,
+      "type": "StringConcatenate",
+      "pos": [
+        880,
+        120
+      ],
+      "size": [
+        420,
+        260
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "string_a",
+          "type": "STRING",
+          "widget": {
+            "name": "string_a"
+          },
+          "link": 5
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            7
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "StringConcatenate"
+      },
+      "widgets_values": [
+        "",
+        "upper body, white background, simple background, looking at viewer, (expressionless, closed mouth:1.2)",
+        ", "
+      ],
+      "title": "1 기본",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 14,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1330,
+        130
+      ],
+      "size": [
+        300,
+        100
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 6
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 7
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            9
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "title": "1 인코딩"
+    },
+    {
+      "id": 15,
+      "type": "KSampler",
+      "pos": [
+        1330,
+        210
+      ],
+      "size": [
+        300,
+        262
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 8
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 9
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 10
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 11
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "widget": {
+            "name": "seed"
+          },
+          "link": 12
+        },
+        {
+          "name": "steps",
+          "type": "INT",
+          "widget": {
+            "name": "steps"
+          },
+          "link": 13
+        },
+        {
+          "name": "cfg",
+          "type": "FLOAT",
+          "widget": {
+            "name": "cfg"
+          },
+          "link": 14
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            15
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        123456789,
+        "randomize",
+        28,
+        5.0,
+        "euler_ancestral",
+        "normal",
+        1.0
+      ],
+      "title": "1 KSampler"
+    },
+    {
+      "id": 16,
+      "type": "VAEDecode",
+      "pos": [
+        1330,
+        290
+      ],
+      "size": [
+        200,
+        46
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 15
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 16
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            17
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "1 VAE 디코드"
+    },
+    {
+      "id": 17,
+      "type": "SaveImage",
+      "pos": [
+        1570,
+        120
+      ],
+      "size": [
+        260,
+        290
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 17
+        }
+      ],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "%char.value%/1"
+      ],
+      "title": "1 기본 저장"
+    },
+    {
+      "id": 18,
+      "type": "StringConcatenate",
+      "pos": [
+        880,
+        450
+      ],
+      "size": [
+        420,
+        260
+      ],
+      "flags": {},
+      "order": 18,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "string_a",
+          "type": "STRING",
+          "widget": {
+            "name": "string_a"
+          },
+          "link": 18
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            20
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "StringConcatenate"
+      },
+      "widgets_values": [
+        "",
+        "upper body, white background, simple background, looking at viewer, (smile, closed mouth, happy:1.3)",
+        ", "
+      ],
+      "title": "2 미소",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 19,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1330,
+        460
+      ],
+      "size": [
+        300,
+        100
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 19,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 19
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 20
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            22
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "title": "2 인코딩"
+    },
+    {
+      "id": 20,
+      "type": "KSampler",
+      "pos": [
+        1330,
+        540
+      ],
+      "size": [
+        300,
+        262
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 20,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 21
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 22
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 23
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 24
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "widget": {
+            "name": "seed"
+          },
+          "link": 25
+        },
+        {
+          "name": "steps",
+          "type": "INT",
+          "widget": {
+            "name": "steps"
+          },
+          "link": 26
+        },
+        {
+          "name": "cfg",
+          "type": "FLOAT",
+          "widget": {
+            "name": "cfg"
+          },
+          "link": 27
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            28
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        123456789,
+        "randomize",
+        28,
+        5.0,
+        "euler_ancestral",
+        "normal",
+        1.0
+      ],
+      "title": "2 KSampler"
+    },
+    {
+      "id": 21,
+      "type": "VAEDecode",
+      "pos": [
+        1330,
+        620
+      ],
+      "size": [
+        200,
+        46
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 21,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 28
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 29
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            30
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "2 VAE 디코드"
+    },
+    {
+      "id": 22,
+      "type": "SaveImage",
+      "pos": [
+        1570,
+        450
+      ],
+      "size": [
+        260,
+        290
+      ],
+      "flags": {},
+      "order": 22,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 30
+        }
+      ],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "%char.value%/2"
+      ],
+      "title": "2 미소 저장"
+    },
+    {
+      "id": 23,
+      "type": "StringConcatenate",
+      "pos": [
+        880,
+        780
+      ],
+      "size": [
+        420,
+        260
+      ],
+      "flags": {},
+      "order": 23,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "string_a",
+          "type": "STRING",
+          "widget": {
+            "name": "string_a"
+          },
+          "link": 31
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            33
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "StringConcatenate"
+      },
+      "widgets_values": [
+        "",
+        "upper body, white background, simple background, looking at viewer, (annoyed, frown, displeased:1.3)",
+        ", "
+      ],
+      "title": "3 불쾌",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 24,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1330,
+        790
+      ],
+      "size": [
+        300,
+        100
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 24,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 32
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 33
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            35
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "title": "3 인코딩"
+    },
+    {
+      "id": 25,
+      "type": "KSampler",
+      "pos": [
+        1330,
+        870
+      ],
+      "size": [
+        300,
+        262
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 25,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 34
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 35
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 36
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 37
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "widget": {
+            "name": "seed"
+          },
+          "link": 38
+        },
+        {
+          "name": "steps",
+          "type": "INT",
+          "widget": {
+            "name": "steps"
+          },
+          "link": 39
+        },
+        {
+          "name": "cfg",
+          "type": "FLOAT",
+          "widget": {
+            "name": "cfg"
+          },
+          "link": 40
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            41
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        123456789,
+        "randomize",
+        28,
+        5.0,
+        "euler_ancestral",
+        "normal",
+        1.0
+      ],
+      "title": "3 KSampler"
+    },
+    {
+      "id": 26,
+      "type": "VAEDecode",
+      "pos": [
+        1330,
+        950
+      ],
+      "size": [
+        200,
+        46
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 26,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 41
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 42
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            43
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "3 VAE 디코드"
+    },
+    {
+      "id": 27,
+      "type": "SaveImage",
+      "pos": [
+        1570,
+        780
+      ],
+      "size": [
+        260,
+        290
+      ],
+      "flags": {},
+      "order": 27,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 43
+        }
+      ],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "%char.value%/3"
+      ],
+      "title": "3 불쾌 저장"
+    },
+    {
+      "id": 28,
+      "type": "StringConcatenate",
+      "pos": [
+        880,
+        1110
+      ],
+      "size": [
+        420,
+        260
+      ],
+      "flags": {},
+      "order": 28,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "string_a",
+          "type": "STRING",
+          "widget": {
+            "name": "string_a"
+          },
+          "link": 44
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            46
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "StringConcatenate"
+      },
+      "widgets_values": [
+        "",
+        "upper body, white background, simple background, (blush, embarrassed, looking away, nose blush:1.3)",
+        ", "
+      ],
+      "title": "4 부끄",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 29,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1330,
+        1120
+      ],
+      "size": [
+        300,
+        100
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 29,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 45
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 46
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            48
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "title": "4 인코딩"
+    },
+    {
+      "id": 30,
+      "type": "KSampler",
+      "pos": [
+        1330,
+        1200
+      ],
+      "size": [
+        300,
+        262
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 30,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 47
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 48
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 49
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 50
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "widget": {
+            "name": "seed"
+          },
+          "link": 51
+        },
+        {
+          "name": "steps",
+          "type": "INT",
+          "widget": {
+            "name": "steps"
+          },
+          "link": 52
+        },
+        {
+          "name": "cfg",
+          "type": "FLOAT",
+          "widget": {
+            "name": "cfg"
+          },
+          "link": 53
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            54
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        123456789,
+        "randomize",
+        28,
+        5.0,
+        "euler_ancestral",
+        "normal",
+        1.0
+      ],
+      "title": "4 KSampler"
+    },
+    {
+      "id": 31,
+      "type": "VAEDecode",
+      "pos": [
+        1330,
+        1280
+      ],
+      "size": [
+        200,
+        46
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 31,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 54
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 55
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            56
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "4 VAE 디코드"
+    },
+    {
+      "id": 32,
+      "type": "SaveImage",
+      "pos": [
+        1570,
+        1110
+      ],
+      "size": [
+        260,
+        290
+      ],
+      "flags": {},
+      "order": 32,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 56
+        }
+      ],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "%char.value%/4"
+      ],
+      "title": "4 부끄 저장"
+    },
+    {
+      "id": 33,
+      "type": "StringConcatenate",
+      "pos": [
+        880,
+        1440
+      ],
+      "size": [
+        420,
+        260
+      ],
+      "flags": {},
+      "order": 33,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "string_a",
+          "type": "STRING",
+          "widget": {
+            "name": "string_a"
+          },
+          "link": 57
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            59
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "StringConcatenate"
+      },
+      "widgets_values": [
+        "",
+        "upper body, white background, simple background, looking at viewer, (surprised, wide-eyed, open mouth:1.3)",
+        ", "
+      ],
+      "title": "5 놀람",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 34,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1330,
+        1450
+      ],
+      "size": [
+        300,
+        100
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 34,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 58
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 59
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            61
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "title": "5 인코딩"
+    },
+    {
+      "id": 35,
+      "type": "KSampler",
+      "pos": [
+        1330,
+        1530
+      ],
+      "size": [
+        300,
+        262
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 35,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 60
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 61
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 62
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 63
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "widget": {
+            "name": "seed"
+          },
+          "link": 64
+        },
+        {
+          "name": "steps",
+          "type": "INT",
+          "widget": {
+            "name": "steps"
+          },
+          "link": 65
+        },
+        {
+          "name": "cfg",
+          "type": "FLOAT",
+          "widget": {
+            "name": "cfg"
+          },
+          "link": 66
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            67
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        123456789,
+        "randomize",
+        28,
+        5.0,
+        "euler_ancestral",
+        "normal",
+        1.0
+      ],
+      "title": "5 KSampler"
+    },
+    {
+      "id": 36,
+      "type": "VAEDecode",
+      "pos": [
+        1330,
+        1610
+      ],
+      "size": [
+        200,
+        46
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 36,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 67
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 68
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            69
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "5 VAE 디코드"
+    },
+    {
+      "id": 37,
+      "type": "SaveImage",
+      "pos": [
+        1570,
+        1440
+      ],
+      "size": [
+        260,
+        290
+      ],
+      "flags": {},
+      "order": 37,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 69
+        }
+      ],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "%char.value%/5"
+      ],
+      "title": "5 놀람 저장"
+    },
+    {
+      "id": 38,
+      "type": "StringConcatenate",
+      "pos": [
+        880,
+        1770
+      ],
+      "size": [
+        420,
+        260
+      ],
+      "flags": {},
+      "order": 38,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "string_a",
+          "type": "STRING",
+          "widget": {
+            "name": "string_a"
+          },
+          "link": 70
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            72
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "StringConcatenate"
+      },
+      "widgets_values": [
+        "",
+        "upper body, white background, simple background, straight-on, (angry, shouting, open mouth, v-shaped eyebrows:1.3)",
+        ", "
+      ],
+      "title": "7 화남",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 39,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1330,
+        1780
+      ],
+      "size": [
+        300,
+        100
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 39,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 71
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 72
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            74
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "title": "7 인코딩"
+    },
+    {
+      "id": 40,
+      "type": "KSampler",
+      "pos": [
+        1330,
+        1860
+      ],
+      "size": [
+        300,
+        262
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 40,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 73
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 74
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 75
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 76
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "widget": {
+            "name": "seed"
+          },
+          "link": 77
+        },
+        {
+          "name": "steps",
+          "type": "INT",
+          "widget": {
+            "name": "steps"
+          },
+          "link": 78
+        },
+        {
+          "name": "cfg",
+          "type": "FLOAT",
+          "widget": {
+            "name": "cfg"
+          },
+          "link": 79
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            80
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        123456789,
+        "randomize",
+        28,
+        5.0,
+        "euler_ancestral",
+        "normal",
+        1.0
+      ],
+      "title": "7 KSampler"
+    },
+    {
+      "id": 41,
+      "type": "VAEDecode",
+      "pos": [
+        1330,
+        1940
+      ],
+      "size": [
+        200,
+        46
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 41,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 80
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 81
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            82
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "7 VAE 디코드"
+    },
+    {
+      "id": 42,
+      "type": "SaveImage",
+      "pos": [
+        1570,
+        1770
+      ],
+      "size": [
+        260,
+        290
+      ],
+      "flags": {},
+      "order": 42,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 82
+        }
+      ],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "%char.value%/7"
+      ],
+      "title": "7 화남 저장"
+    },
+    {
+      "id": 43,
+      "type": "StringConcatenate",
+      "pos": [
+        880,
+        2100
+      ],
+      "size": [
+        420,
+        260
+      ],
+      "flags": {},
+      "order": 43,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "string_a",
+          "type": "STRING",
+          "widget": {
+            "name": "string_a"
+          },
+          "link": 83
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            85
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "StringConcatenate"
+      },
+      "widgets_values": [
+        "",
+        "upper body, white background, simple background, looking at viewer, (crying, streaming tears, sad:1.3)",
+        ", "
+      ],
+      "title": "8 눈물",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 44,
+      "type": "CLIPTextEncode",
+      "pos": [
+        1330,
+        2110
+      ],
+      "size": [
+        300,
+        100
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 44,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 84
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 85
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            87
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "title": "8 인코딩"
+    },
+    {
+      "id": 45,
+      "type": "KSampler",
+      "pos": [
+        1330,
+        2190
+      ],
+      "size": [
+        300,
+        262
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 45,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 86
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 87
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 88
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 89
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "widget": {
+            "name": "seed"
+          },
+          "link": 90
+        },
+        {
+          "name": "steps",
+          "type": "INT",
+          "widget": {
+            "name": "steps"
+          },
+          "link": 91
+        },
+        {
+          "name": "cfg",
+          "type": "FLOAT",
+          "widget": {
+            "name": "cfg"
+          },
+          "link": 92
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            93
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        123456789,
+        "randomize",
+        28,
+        5.0,
+        "euler_ancestral",
+        "normal",
+        1.0
+      ],
+      "title": "8 KSampler"
+    },
+    {
+      "id": 46,
+      "type": "VAEDecode",
+      "pos": [
+        1330,
+        2270
+      ],
+      "size": [
+        200,
+        46
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 46,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 93
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 94
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            95
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "8 VAE 디코드"
+    },
+    {
+      "id": 47,
+      "type": "SaveImage",
+      "pos": [
+        1570,
+        2100
+      ],
+      "size": [
+        260,
+        290
+      ],
+      "flags": {},
+      "order": 47,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 95
+        }
+      ],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "%char.value%/8"
+      ],
+      "title": "8 눈물 저장"
+    },
+    {
+      "id": 48,
+      "type": "StringConcatenate",
+      "pos": [
+        1920,
+        120
+      ],
+      "size": [
+        420,
+        260
+      ],
+      "flags": {},
+      "order": 48,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "string_a",
+          "type": "STRING",
+          "widget": {
+            "name": "string_a"
+          },
+          "link": 96
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            98
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "StringConcatenate"
+      },
+      "widgets_values": [
+        "",
+        "full body, dynamic pose, fighting stance, casting spell, outstretched hand, purple fire, ghost, magic circle, night, ruins, wind, dramatic lighting, (serious, glaring:1.2)",
+        ", "
+      ],
+      "title": "61 전투",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 49,
+      "type": "CLIPTextEncode",
+      "pos": [
+        2370,
+        130
+      ],
+      "size": [
+        300,
+        100
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 49,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 97
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 98
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            100
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "title": "61 인코딩"
+    },
+    {
+      "id": 50,
+      "type": "KSampler",
+      "pos": [
+        2370,
+        210
+      ],
+      "size": [
+        300,
+        262
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 50,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 99
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 100
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 101
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 102
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "widget": {
+            "name": "seed"
+          },
+          "link": 103
+        },
+        {
+          "name": "steps",
+          "type": "INT",
+          "widget": {
+            "name": "steps"
+          },
+          "link": 104
+        },
+        {
+          "name": "cfg",
+          "type": "FLOAT",
+          "widget": {
+            "name": "cfg"
+          },
+          "link": 105
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            106
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        123456789,
+        "randomize",
+        28,
+        5.0,
+        "euler_ancestral",
+        "normal",
+        1.0
+      ],
+      "title": "61 KSampler"
+    },
+    {
+      "id": 51,
+      "type": "VAEDecode",
+      "pos": [
+        2370,
+        290
+      ],
+      "size": [
+        200,
+        46
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 51,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 106
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 107
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            108
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "61 VAE 디코드"
+    },
+    {
+      "id": 52,
+      "type": "SaveImage",
+      "pos": [
+        2610,
+        120
+      ],
+      "size": [
+        260,
+        290
+      ],
+      "flags": {},
+      "order": 52,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 108
+        }
+      ],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "%char.value%/61"
+      ],
+      "title": "61 전투 저장"
+    },
+    {
+      "id": 53,
+      "type": "StringConcatenate",
+      "pos": [
+        1920,
+        450
+      ],
+      "size": [
+        420,
+        260
+      ],
+      "flags": {},
+      "order": 53,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "string_a",
+          "type": "STRING",
+          "widget": {
+            "name": "string_a"
+          },
+          "link": 109
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            111
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "StringConcatenate"
+      },
+      "widgets_values": [
+        "",
+        "upper body, sitting, indoors, cafe, table, eating, holding spoon, cake, cup, warm lighting, (happy, smile:1.2)",
+        ", "
+      ],
+      "title": "62 식사",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 54,
+      "type": "CLIPTextEncode",
+      "pos": [
+        2370,
+        460
+      ],
+      "size": [
+        300,
+        100
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 54,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 110
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 111
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            113
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "title": "62 인코딩"
+    },
+    {
+      "id": 55,
+      "type": "KSampler",
+      "pos": [
+        2370,
+        540
+      ],
+      "size": [
+        300,
+        262
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 55,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 112
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 113
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 114
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 115
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "widget": {
+            "name": "seed"
+          },
+          "link": 116
+        },
+        {
+          "name": "steps",
+          "type": "INT",
+          "widget": {
+            "name": "steps"
+          },
+          "link": 117
+        },
+        {
+          "name": "cfg",
+          "type": "FLOAT",
+          "widget": {
+            "name": "cfg"
+          },
+          "link": 118
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            119
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        123456789,
+        "randomize",
+        28,
+        5.0,
+        "euler_ancestral",
+        "normal",
+        1.0
+      ],
+      "title": "62 KSampler"
+    },
+    {
+      "id": 56,
+      "type": "VAEDecode",
+      "pos": [
+        2370,
+        620
+      ],
+      "size": [
+        200,
+        46
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 56,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 119
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 120
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            121
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "62 VAE 디코드"
+    },
+    {
+      "id": 57,
+      "type": "SaveImage",
+      "pos": [
+        2610,
+        450
+      ],
+      "size": [
+        260,
+        290
+      ],
+      "flags": {},
+      "order": 57,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 121
+        }
+      ],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "%char.value%/62"
+      ],
+      "title": "62 식사 저장"
+    },
+    {
+      "id": 58,
+      "type": "StringConcatenate",
+      "pos": [
+        1920,
+        780
+      ],
+      "size": [
+        420,
+        260
+      ],
+      "flags": {},
+      "order": 58,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "string_a",
+          "type": "STRING",
+          "widget": {
+            "name": "string_a"
+          },
+          "link": 122
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            124
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "StringConcatenate"
+      },
+      "widgets_values": [
+        "",
+        "cowboy shot, looking at viewer, hand on own hip, v, confetti, sparkle, outdoors, blue sky, (smug, grin:1.2)",
+        ", "
+      ],
+      "title": "63 승리",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 59,
+      "type": "CLIPTextEncode",
+      "pos": [
+        2370,
+        790
+      ],
+      "size": [
+        300,
+        100
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 59,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 123
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 124
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            126
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "title": "63 인코딩"
+    },
+    {
+      "id": 60,
+      "type": "KSampler",
+      "pos": [
+        2370,
+        870
+      ],
+      "size": [
+        300,
+        262
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 60,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 125
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 126
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 127
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 128
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "widget": {
+            "name": "seed"
+          },
+          "link": 129
+        },
+        {
+          "name": "steps",
+          "type": "INT",
+          "widget": {
+            "name": "steps"
+          },
+          "link": 130
+        },
+        {
+          "name": "cfg",
+          "type": "FLOAT",
+          "widget": {
+            "name": "cfg"
+          },
+          "link": 131
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            132
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        123456789,
+        "randomize",
+        28,
+        5.0,
+        "euler_ancestral",
+        "normal",
+        1.0
+      ],
+      "title": "63 KSampler"
+    },
+    {
+      "id": 61,
+      "type": "VAEDecode",
+      "pos": [
+        2370,
+        950
+      ],
+      "size": [
+        200,
+        46
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 61,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 132
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 133
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            134
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "63 VAE 디코드"
+    },
+    {
+      "id": 62,
+      "type": "SaveImage",
+      "pos": [
+        2610,
+        780
+      ],
+      "size": [
+        260,
+        290
+      ],
+      "flags": {},
+      "order": 62,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 134
+        }
+      ],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "%char.value%/63"
+      ],
+      "title": "63 승리 저장"
+    },
+    {
+      "id": 63,
+      "type": "StringConcatenate",
+      "pos": [
+        1920,
+        1110
+      ],
+      "size": [
+        420,
+        260
+      ],
+      "flags": {},
+      "order": 63,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "string_a",
+          "type": "STRING",
+          "widget": {
+            "name": "string_a"
+          },
+          "link": 135
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            137
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "StringConcatenate"
+      },
+      "widgets_values": [
+        "",
+        "full body, sitting on ground, head down, rain, wet hair, dark clouds, outdoors, (defeat, tears, frustrated, clenched teeth:1.2)",
+        ", "
+      ],
+      "title": "64 패배",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 64,
+      "type": "CLIPTextEncode",
+      "pos": [
+        2370,
+        1120
+      ],
+      "size": [
+        300,
+        100
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 64,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 136
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 137
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            139
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "title": "64 인코딩"
+    },
+    {
+      "id": 65,
+      "type": "KSampler",
+      "pos": [
+        2370,
+        1200
+      ],
+      "size": [
+        300,
+        262
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 65,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 138
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 139
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 140
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 141
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "widget": {
+            "name": "seed"
+          },
+          "link": 142
+        },
+        {
+          "name": "steps",
+          "type": "INT",
+          "widget": {
+            "name": "steps"
+          },
+          "link": 143
+        },
+        {
+          "name": "cfg",
+          "type": "FLOAT",
+          "widget": {
+            "name": "cfg"
+          },
+          "link": 144
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            145
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        123456789,
+        "randomize",
+        28,
+        5.0,
+        "euler_ancestral",
+        "normal",
+        1.0
+      ],
+      "title": "64 KSampler"
+    },
+    {
+      "id": 66,
+      "type": "VAEDecode",
+      "pos": [
+        2370,
+        1280
+      ],
+      "size": [
+        200,
+        46
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 66,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 145
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 146
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            147
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "64 VAE 디코드"
+    },
+    {
+      "id": 67,
+      "type": "SaveImage",
+      "pos": [
+        2610,
+        1110
+      ],
+      "size": [
+        260,
+        290
+      ],
+      "flags": {},
+      "order": 67,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 147
+        }
+      ],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "%char.value%/64"
+      ],
+      "title": "64 패배 저장"
+    },
+    {
+      "id": 68,
+      "type": "StringConcatenate",
+      "pos": [
+        1920,
+        1440
+      ],
+      "size": [
+        420,
+        260
+      ],
+      "flags": {},
+      "order": 68,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "string_a",
+          "type": "STRING",
+          "widget": {
+            "name": "string_a"
+          },
+          "link": 148
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            150
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "StringConcatenate"
+      },
+      "widgets_values": [
+        "",
+        "cowboy shot, pov, holding hands, looking at viewer, city street, evening, sunset, outdoors, (shy smile, blush:1.2)",
+        ", "
+      ],
+      "title": "65 데이트",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 69,
+      "type": "CLIPTextEncode",
+      "pos": [
+        2370,
+        1450
+      ],
+      "size": [
+        300,
+        100
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 69,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 149
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 150
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            152
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "title": "65 인코딩"
+    },
+    {
+      "id": 70,
+      "type": "KSampler",
+      "pos": [
+        2370,
+        1530
+      ],
+      "size": [
+        300,
+        262
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 70,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 151
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 152
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 153
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 154
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "widget": {
+            "name": "seed"
+          },
+          "link": 155
+        },
+        {
+          "name": "steps",
+          "type": "INT",
+          "widget": {
+            "name": "steps"
+          },
+          "link": 156
+        },
+        {
+          "name": "cfg",
+          "type": "FLOAT",
+          "widget": {
+            "name": "cfg"
+          },
+          "link": 157
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            158
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        123456789,
+        "randomize",
+        28,
+        5.0,
+        "euler_ancestral",
+        "normal",
+        1.0
+      ],
+      "title": "65 KSampler"
+    },
+    {
+      "id": 71,
+      "type": "VAEDecode",
+      "pos": [
+        2370,
+        1610
+      ],
+      "size": [
+        200,
+        46
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 71,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 158
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 159
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            160
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "title": "65 VAE 디코드"
+    },
+    {
+      "id": 72,
+      "type": "SaveImage",
+      "pos": [
+        2610,
+        1440
+      ],
+      "size": [
+        260,
+        290
+      ],
+      "flags": {},
+      "order": 72,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 160
+        }
+      ],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "%char.value%/65"
+      ],
+      "title": "65 데이트 저장"
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      2,
+      0,
+      "MODEL"
+    ],
+    [
+      2,
+      1,
+      1,
+      2,
+      1,
+      "CLIP"
+    ],
+    [
+      3,
+      2,
+      1,
+      3,
+      0,
+      "CLIP"
+    ],
+    [
+      4,
+      3,
+      0,
+      5,
+      0,
+      "CLIP"
+    ],
+    [
+      5,
+      4,
+      0,
+      13,
+      0,
+      "STRING"
+    ],
+    [
+      6,
+      3,
+      0,
+      14,
+      0,
+      "CLIP"
+    ],
+    [
+      7,
+      13,
+      0,
+      14,
+      1,
+      "STRING"
+    ],
+    [
+      8,
+      2,
+      0,
+      15,
+      0,
+      "MODEL"
+    ],
+    [
+      9,
+      14,
+      0,
+      15,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      10,
+      5,
+      0,
+      15,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      11,
+      10,
+      0,
+      15,
+      3,
+      "LATENT"
+    ],
+    [
+      12,
+      7,
+      0,
+      15,
+      4,
+      "INT"
+    ],
+    [
+      13,
+      8,
+      0,
+      15,
+      5,
+      "INT"
+    ],
+    [
+      14,
+      9,
+      0,
+      15,
+      6,
+      "FLOAT"
+    ],
+    [
+      15,
+      15,
+      0,
+      16,
+      0,
+      "LATENT"
+    ],
+    [
+      16,
+      1,
+      2,
+      16,
+      1,
+      "VAE"
+    ],
+    [
+      17,
+      16,
+      0,
+      17,
+      0,
+      "IMAGE"
+    ],
+    [
+      18,
+      4,
+      0,
+      18,
+      0,
+      "STRING"
+    ],
+    [
+      19,
+      3,
+      0,
+      19,
+      0,
+      "CLIP"
+    ],
+    [
+      20,
+      18,
+      0,
+      19,
+      1,
+      "STRING"
+    ],
+    [
+      21,
+      2,
+      0,
+      20,
+      0,
+      "MODEL"
+    ],
+    [
+      22,
+      19,
+      0,
+      20,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      23,
+      5,
+      0,
+      20,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      24,
+      10,
+      0,
+      20,
+      3,
+      "LATENT"
+    ],
+    [
+      25,
+      7,
+      0,
+      20,
+      4,
+      "INT"
+    ],
+    [
+      26,
+      8,
+      0,
+      20,
+      5,
+      "INT"
+    ],
+    [
+      27,
+      9,
+      0,
+      20,
+      6,
+      "FLOAT"
+    ],
+    [
+      28,
+      20,
+      0,
+      21,
+      0,
+      "LATENT"
+    ],
+    [
+      29,
+      1,
+      2,
+      21,
+      1,
+      "VAE"
+    ],
+    [
+      30,
+      21,
+      0,
+      22,
+      0,
+      "IMAGE"
+    ],
+    [
+      31,
+      4,
+      0,
+      23,
+      0,
+      "STRING"
+    ],
+    [
+      32,
+      3,
+      0,
+      24,
+      0,
+      "CLIP"
+    ],
+    [
+      33,
+      23,
+      0,
+      24,
+      1,
+      "STRING"
+    ],
+    [
+      34,
+      2,
+      0,
+      25,
+      0,
+      "MODEL"
+    ],
+    [
+      35,
+      24,
+      0,
+      25,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      36,
+      5,
+      0,
+      25,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      37,
+      10,
+      0,
+      25,
+      3,
+      "LATENT"
+    ],
+    [
+      38,
+      7,
+      0,
+      25,
+      4,
+      "INT"
+    ],
+    [
+      39,
+      8,
+      0,
+      25,
+      5,
+      "INT"
+    ],
+    [
+      40,
+      9,
+      0,
+      25,
+      6,
+      "FLOAT"
+    ],
+    [
+      41,
+      25,
+      0,
+      26,
+      0,
+      "LATENT"
+    ],
+    [
+      42,
+      1,
+      2,
+      26,
+      1,
+      "VAE"
+    ],
+    [
+      43,
+      26,
+      0,
+      27,
+      0,
+      "IMAGE"
+    ],
+    [
+      44,
+      4,
+      0,
+      28,
+      0,
+      "STRING"
+    ],
+    [
+      45,
+      3,
+      0,
+      29,
+      0,
+      "CLIP"
+    ],
+    [
+      46,
+      28,
+      0,
+      29,
+      1,
+      "STRING"
+    ],
+    [
+      47,
+      2,
+      0,
+      30,
+      0,
+      "MODEL"
+    ],
+    [
+      48,
+      29,
+      0,
+      30,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      49,
+      5,
+      0,
+      30,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      50,
+      10,
+      0,
+      30,
+      3,
+      "LATENT"
+    ],
+    [
+      51,
+      7,
+      0,
+      30,
+      4,
+      "INT"
+    ],
+    [
+      52,
+      8,
+      0,
+      30,
+      5,
+      "INT"
+    ],
+    [
+      53,
+      9,
+      0,
+      30,
+      6,
+      "FLOAT"
+    ],
+    [
+      54,
+      30,
+      0,
+      31,
+      0,
+      "LATENT"
+    ],
+    [
+      55,
+      1,
+      2,
+      31,
+      1,
+      "VAE"
+    ],
+    [
+      56,
+      31,
+      0,
+      32,
+      0,
+      "IMAGE"
+    ],
+    [
+      57,
+      4,
+      0,
+      33,
+      0,
+      "STRING"
+    ],
+    [
+      58,
+      3,
+      0,
+      34,
+      0,
+      "CLIP"
+    ],
+    [
+      59,
+      33,
+      0,
+      34,
+      1,
+      "STRING"
+    ],
+    [
+      60,
+      2,
+      0,
+      35,
+      0,
+      "MODEL"
+    ],
+    [
+      61,
+      34,
+      0,
+      35,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      62,
+      5,
+      0,
+      35,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      63,
+      10,
+      0,
+      35,
+      3,
+      "LATENT"
+    ],
+    [
+      64,
+      7,
+      0,
+      35,
+      4,
+      "INT"
+    ],
+    [
+      65,
+      8,
+      0,
+      35,
+      5,
+      "INT"
+    ],
+    [
+      66,
+      9,
+      0,
+      35,
+      6,
+      "FLOAT"
+    ],
+    [
+      67,
+      35,
+      0,
+      36,
+      0,
+      "LATENT"
+    ],
+    [
+      68,
+      1,
+      2,
+      36,
+      1,
+      "VAE"
+    ],
+    [
+      69,
+      36,
+      0,
+      37,
+      0,
+      "IMAGE"
+    ],
+    [
+      70,
+      4,
+      0,
+      38,
+      0,
+      "STRING"
+    ],
+    [
+      71,
+      3,
+      0,
+      39,
+      0,
+      "CLIP"
+    ],
+    [
+      72,
+      38,
+      0,
+      39,
+      1,
+      "STRING"
+    ],
+    [
+      73,
+      2,
+      0,
+      40,
+      0,
+      "MODEL"
+    ],
+    [
+      74,
+      39,
+      0,
+      40,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      75,
+      5,
+      0,
+      40,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      76,
+      10,
+      0,
+      40,
+      3,
+      "LATENT"
+    ],
+    [
+      77,
+      7,
+      0,
+      40,
+      4,
+      "INT"
+    ],
+    [
+      78,
+      8,
+      0,
+      40,
+      5,
+      "INT"
+    ],
+    [
+      79,
+      9,
+      0,
+      40,
+      6,
+      "FLOAT"
+    ],
+    [
+      80,
+      40,
+      0,
+      41,
+      0,
+      "LATENT"
+    ],
+    [
+      81,
+      1,
+      2,
+      41,
+      1,
+      "VAE"
+    ],
+    [
+      82,
+      41,
+      0,
+      42,
+      0,
+      "IMAGE"
+    ],
+    [
+      83,
+      4,
+      0,
+      43,
+      0,
+      "STRING"
+    ],
+    [
+      84,
+      3,
+      0,
+      44,
+      0,
+      "CLIP"
+    ],
+    [
+      85,
+      43,
+      0,
+      44,
+      1,
+      "STRING"
+    ],
+    [
+      86,
+      2,
+      0,
+      45,
+      0,
+      "MODEL"
+    ],
+    [
+      87,
+      44,
+      0,
+      45,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      88,
+      5,
+      0,
+      45,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      89,
+      10,
+      0,
+      45,
+      3,
+      "LATENT"
+    ],
+    [
+      90,
+      7,
+      0,
+      45,
+      4,
+      "INT"
+    ],
+    [
+      91,
+      8,
+      0,
+      45,
+      5,
+      "INT"
+    ],
+    [
+      92,
+      9,
+      0,
+      45,
+      6,
+      "FLOAT"
+    ],
+    [
+      93,
+      45,
+      0,
+      46,
+      0,
+      "LATENT"
+    ],
+    [
+      94,
+      1,
+      2,
+      46,
+      1,
+      "VAE"
+    ],
+    [
+      95,
+      46,
+      0,
+      47,
+      0,
+      "IMAGE"
+    ],
+    [
+      96,
+      4,
+      0,
+      48,
+      0,
+      "STRING"
+    ],
+    [
+      97,
+      3,
+      0,
+      49,
+      0,
+      "CLIP"
+    ],
+    [
+      98,
+      48,
+      0,
+      49,
+      1,
+      "STRING"
+    ],
+    [
+      99,
+      2,
+      0,
+      50,
+      0,
+      "MODEL"
+    ],
+    [
+      100,
+      49,
+      0,
+      50,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      101,
+      5,
+      0,
+      50,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      102,
+      11,
+      0,
+      50,
+      3,
+      "LATENT"
+    ],
+    [
+      103,
+      7,
+      0,
+      50,
+      4,
+      "INT"
+    ],
+    [
+      104,
+      8,
+      0,
+      50,
+      5,
+      "INT"
+    ],
+    [
+      105,
+      9,
+      0,
+      50,
+      6,
+      "FLOAT"
+    ],
+    [
+      106,
+      50,
+      0,
+      51,
+      0,
+      "LATENT"
+    ],
+    [
+      107,
+      1,
+      2,
+      51,
+      1,
+      "VAE"
+    ],
+    [
+      108,
+      51,
+      0,
+      52,
+      0,
+      "IMAGE"
+    ],
+    [
+      109,
+      4,
+      0,
+      53,
+      0,
+      "STRING"
+    ],
+    [
+      110,
+      3,
+      0,
+      54,
+      0,
+      "CLIP"
+    ],
+    [
+      111,
+      53,
+      0,
+      54,
+      1,
+      "STRING"
+    ],
+    [
+      112,
+      2,
+      0,
+      55,
+      0,
+      "MODEL"
+    ],
+    [
+      113,
+      54,
+      0,
+      55,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      114,
+      5,
+      0,
+      55,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      115,
+      11,
+      0,
+      55,
+      3,
+      "LATENT"
+    ],
+    [
+      116,
+      7,
+      0,
+      55,
+      4,
+      "INT"
+    ],
+    [
+      117,
+      8,
+      0,
+      55,
+      5,
+      "INT"
+    ],
+    [
+      118,
+      9,
+      0,
+      55,
+      6,
+      "FLOAT"
+    ],
+    [
+      119,
+      55,
+      0,
+      56,
+      0,
+      "LATENT"
+    ],
+    [
+      120,
+      1,
+      2,
+      56,
+      1,
+      "VAE"
+    ],
+    [
+      121,
+      56,
+      0,
+      57,
+      0,
+      "IMAGE"
+    ],
+    [
+      122,
+      4,
+      0,
+      58,
+      0,
+      "STRING"
+    ],
+    [
+      123,
+      3,
+      0,
+      59,
+      0,
+      "CLIP"
+    ],
+    [
+      124,
+      58,
+      0,
+      59,
+      1,
+      "STRING"
+    ],
+    [
+      125,
+      2,
+      0,
+      60,
+      0,
+      "MODEL"
+    ],
+    [
+      126,
+      59,
+      0,
+      60,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      127,
+      5,
+      0,
+      60,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      128,
+      11,
+      0,
+      60,
+      3,
+      "LATENT"
+    ],
+    [
+      129,
+      7,
+      0,
+      60,
+      4,
+      "INT"
+    ],
+    [
+      130,
+      8,
+      0,
+      60,
+      5,
+      "INT"
+    ],
+    [
+      131,
+      9,
+      0,
+      60,
+      6,
+      "FLOAT"
+    ],
+    [
+      132,
+      60,
+      0,
+      61,
+      0,
+      "LATENT"
+    ],
+    [
+      133,
+      1,
+      2,
+      61,
+      1,
+      "VAE"
+    ],
+    [
+      134,
+      61,
+      0,
+      62,
+      0,
+      "IMAGE"
+    ],
+    [
+      135,
+      4,
+      0,
+      63,
+      0,
+      "STRING"
+    ],
+    [
+      136,
+      3,
+      0,
+      64,
+      0,
+      "CLIP"
+    ],
+    [
+      137,
+      63,
+      0,
+      64,
+      1,
+      "STRING"
+    ],
+    [
+      138,
+      2,
+      0,
+      65,
+      0,
+      "MODEL"
+    ],
+    [
+      139,
+      64,
+      0,
+      65,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      140,
+      5,
+      0,
+      65,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      141,
+      11,
+      0,
+      65,
+      3,
+      "LATENT"
+    ],
+    [
+      142,
+      7,
+      0,
+      65,
+      4,
+      "INT"
+    ],
+    [
+      143,
+      8,
+      0,
+      65,
+      5,
+      "INT"
+    ],
+    [
+      144,
+      9,
+      0,
+      65,
+      6,
+      "FLOAT"
+    ],
+    [
+      145,
+      65,
+      0,
+      66,
+      0,
+      "LATENT"
+    ],
+    [
+      146,
+      1,
+      2,
+      66,
+      1,
+      "VAE"
+    ],
+    [
+      147,
+      66,
+      0,
+      67,
+      0,
+      "IMAGE"
+    ],
+    [
+      148,
+      4,
+      0,
+      68,
+      0,
+      "STRING"
+    ],
+    [
+      149,
+      3,
+      0,
+      69,
+      0,
+      "CLIP"
+    ],
+    [
+      150,
+      68,
+      0,
+      69,
+      1,
+      "STRING"
+    ],
+    [
+      151,
+      2,
+      0,
+      70,
+      0,
+      "MODEL"
+    ],
+    [
+      152,
+      69,
+      0,
+      70,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      153,
+      5,
+      0,
+      70,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      154,
+      11,
+      0,
+      70,
+      3,
+      "LATENT"
+    ],
+    [
+      155,
+      7,
+      0,
+      70,
+      4,
+      "INT"
+    ],
+    [
+      156,
+      8,
+      0,
+      70,
+      5,
+      "INT"
+    ],
+    [
+      157,
+      9,
+      0,
+      70,
+      6,
+      "FLOAT"
+    ],
+    [
+      158,
+      70,
+      0,
+      71,
+      0,
+      "LATENT"
+    ],
+    [
+      159,
+      1,
+      2,
+      71,
+      1,
+      "VAE"
+    ],
+    [
+      160,
+      71,
+      0,
+      72,
+      0,
+      "IMAGE"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "① 공통 설정 (녹색 노드만 수정)",
+      "bounding": [
+        20,
+        40,
+        780,
+        1120
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "② 표정 7종 · 1024×1024",
+      "bounding": [
+        860,
+        40,
+        990,
+        2370
+      ],
+      "color": "#8A8",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "③ 상황 5종 · 832×1216",
+      "bounding": [
+        1900,
+        40,
+        990,
+        1710
+      ],
+      "color": "#b06634",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.55,
+      "offset": [
+        80,
+        160
+      ]
+    },
+    "frontendVersion": "1.53.10"
+  },
+  "version": 0.4
+}
