@@ -79,6 +79,7 @@ src/lib/workflow/ 워크플로우 생성기, 노드 정의, 구조 검사, 실�
 src/store/        Zustand 스토어(실행 취소/다시 실행, 자동 저장), 동작, 작업 파일 저장·열기, 완성 이미지 보관(IndexedDB)
 src/ui/           화면과 공통 부품
 reference/        형식 확인용 샘플 워크플로우
+examples/         예시 작업 파일(윤하린 · 장면 26종)과 그걸로 내보낸 ComfyUI용 JSON
 launcher/         exe 런처 (Go)
 release/          만들어 둔 exe
 ```

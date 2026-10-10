@@ -1,0 +1,953 @@
+{
+  "version": 1,
+  "id": "prj_201y2343703g",
+  "name": "윤하린 · 장면 26종",
+  "checkpoint": "waiIllustriousSDXL_v170.safetensors",
+  "family": "auto",
+  "useMyPreset": true,
+  "characters": [
+    {
+      "id": "chr_5y4y680x271q",
+      "name": "윤하린",
+      "fileId": "harin",
+      "prompt": "1girl, solo, adult, long hair, straight hair, dark brown hair, blunt bangs, sidelocks, amber eyes, medium breasts, slender, hairclip, stud earrings",
+      "negative": "short hair, ponytail, twintails, braid, blonde hair, multicolored hair, glasses, hat, animal ears, tail, flat chest, petite",
+      "trigger": "",
+      "loras": [],
+      "note": "샘플 캐릭터(성인 여성). 외형·악세사리는 캐릭터 프롬프트에, 옷은 \"하린 기본 의상\" 조각에 따로 두었다. 옷을 벗거나 갈아입는 장면(24, 80)에는 의상 조각을 빼 두었다.",
+      "color": "#c77dff"
+    }
+  ],
+  "elements": [
+    {
+      "id": "lra_4x2g6b301870",
+      "kind": "lora",
+      "name": "결 화풍",
+      "file": "gyeol.safetensors",
+      "strength": 1,
+      "clipStrength": null,
+      "trigger": "",
+      "note": "nAI에서 쓰던 화풍을 비슷하게 학습한 로라. 모든 장면에 일괄 적용.",
+      "applyToAll": true
+    },
+    {
+      "id": "frg_0j516s6p2r27",
+      "kind": "fragment",
+      "name": "하린 기본 의상",
+      "category": "의상",
+      "positive": "white shirt, collared shirt, beige cardigan, open cardigan, long sleeves, black skirt, pencil skirt, black pantyhose, wristwatch",
+      "negative": "school uniform, serafuku",
+      "note": "하린의 평소 옷. 전라(24)·캐미솔(80) 장면에는 배정하지 않는다.",
+      "applyToAll": false
+    },
+    {
+      "id": "frg_462e0i4u0x3s",
+      "kind": "fragment",
+      "name": "흰 배경",
+      "category": "배경",
+      "positive": "white background, simple background",
+      "negative": "",
+      "note": "원래 장면마다 붙어 있던 배경 문구를 조각 하나로 모았다.",
+      "applyToAll": false
+    }
+  ],
+  "groups": [
+    {
+      "id": "grp_1c505l076k18",
+      "name": "내 장면",
+      "prompt": "",
+      "negative": "",
+      "note": "nais2에서 쓰던 장면 26종(코드 1~25, 80). nAI용으로 과하게 넣었던 중복 태그와 1.3~1.5 강도는 SDXL(Illustrious)에 맞게 1.1~1.15로 낮췄다. 각 장면 주석에 원본 프롬프트를 남겼다.",
+      "color": "#88aa77",
+      "seedMode": "independent",
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "fromSetId": null
+    }
+  ],
+  "scenes": [
+    {
+      "id": "scn_075t3i0e1e4f",
+      "code": "1",
+      "name": "기본",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "expressionless, closed mouth",
+      "negative": "sweat",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): neutral face\n원본 네거티브: sweat\n바꾼 점: neutral face는 Danbooru 태그가 아니라 expressionless, closed mouth로 바꿈"
+    },
+    {
+      "id": "scn_6h4b6r4p4c1o",
+      "code": "2",
+      "name": "미소",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "(light smile:1.1), closed mouth, happy",
+      "negative": "",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        },
+        {
+          "id": "frg_462e0i4u0x3s",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): (smiling, light smile, closed mouth, happy:1.3), white background, simple background\n바꾼 점: smiling 중복 제거, 강도 1.3→1.1"
+    },
+    {
+      "id": "scn_4o5i4a6b5561",
+      "code": "3",
+      "name": "불쾌",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "(frown, annoyed:1.1), closed mouth",
+      "negative": "blush, sweat",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        },
+        {
+          "id": "frg_462e0i4u0x3s",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): (displeased, frowning, slight frown:1.3), white background, simple background\n원본 네거티브: blush, sweat\n바꾼 점: 찡그림 태그 셋을 frown, annoyed로 정리"
+    },
+    {
+      "id": "scn_1k4u2f6q6p2m",
+      "code": "4",
+      "name": "부끄러움",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "(blush:1.1), shy, looking away",
+      "negative": "",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        },
+        {
+          "id": "frg_462e0i4u0x3s",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): (blushing, shy, averting gaze, rosy cheeks:1.3), white background, simple background\n바꾼 점: blushing·rosy cheeks를 blush 하나로"
+    },
+    {
+      "id": "scn_3o223n0a3c3i",
+      "code": "5",
+      "name": "놀람",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "(surprised:1.1), wide-eyed, open mouth",
+      "negative": "",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        },
+        {
+          "id": "frg_462e0i4u0x3s",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): (surprised, wide eyes, open mouth, stunned:1.3), white background, simple background\n바꾼 점: stunned 중복 제거, wide eyes→wide-eyed"
+    },
+    {
+      "id": "scn_1810302o332c",
+      "code": "6",
+      "name": "경멸",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "(contempt:1.1), smug, shaded face, half-closed eyes, looking down",
+      "negative": "blush, sweat",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        },
+        {
+          "id": "frg_462e0i4u0x3s",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): white background, simple background, (contempt, scornful, smug, frown, displeased, shaded face:1.3), looking down\n원본 네거티브: blush, sweat\n바꾼 점: smug와 부딪히는 frown·displeased를 빼고 half-closed eyes 추가"
+    },
+    {
+      "id": "scn_6l1e1v374s4g",
+      "code": "7",
+      "name": "고함",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "(angry:1.1), shouting, open mouth, straight-on",
+      "negative": "",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): (angry, shouting, yelling, open mouth:1.36), straight-on\n바꾼 점: yelling 중복 제거, 강도 1.36→1.1"
+    },
+    {
+      "id": "scn_0d723y4b0g55",
+      "code": "8",
+      "name": "울음",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "crying, streaming tears, (sad:1.1)",
+      "negative": "blush",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        },
+        {
+          "id": "frg_462e0i4u0x3s",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): white background, simple background, (crying tears, streaming tears, sad:1.12), (sad:1.3), one ear down\n원본 네거티브: blush\n바꾼 점: sad 두 번→한 번. one ear down은 동물 귀 캐릭터용이라 뺌"
+    },
+    {
+      "id": "scn_2a2m6b471u3s",
+      "code": "9",
+      "name": "웃음",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "(laughing:1.1), grin, closed eyes, happy",
+      "negative": "",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        },
+        {
+          "id": "frg_462e0i4u0x3s",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): white background, simple background, (happy laughing, grin, closed eyes \\(happy\\):1.3)\n바꾼 점: 강도 1.3→1.1"
+    },
+    {
+      "id": "scn_696e593u2i5w",
+      "code": "10",
+      "name": "흥분",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "aroused, heavy breathing, full-face blush, heart-shaped pupils, covered nipples",
+      "negative": "",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        },
+        {
+          "id": "frg_462e0i4u0x3s",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): white background, simple background, (aroused, heavy breathing, covered nippls:1.3), flushed face, heart-shaped pupils\n바꾼 점: 오타(nippls) 수정, flushed face→full-face blush"
+    },
+    {
+      "id": "scn_3b1l6z2b035c",
+      "code": "11",
+      "name": "혐오",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "(disgust:1.15), scowl, grimace",
+      "negative": "",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        },
+        {
+          "id": "frg_462e0i4u0x3s",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): white background, simple background, (disgust, grimace, scowling, nose wrinkle:1.5)\n바꾼 점: 강도 1.5→1.15, 비슷한 태그 정리"
+    },
+    {
+      "id": "scn_174f5y0o6x0l",
+      "code": "12",
+      "name": "증오",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "(glaring:1.15), shaded face, angry, clenched teeth",
+      "negative": "",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        },
+        {
+          "id": "frg_462e0i4u0x3s",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): white background, simple background, (hatred, malicious face, glaring, shaded face:1.3)\n바꾼 점: hatred·malicious face는 태그가 아니라 angry, clenched teeth로"
+    },
+    {
+      "id": "scn_513z0e632d3l",
+      "code": "13",
+      "name": "갸웃",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "(confused:1.1), head tilt, ?, thinking, constricted pupils",
+      "negative": "",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        },
+        {
+          "id": "frg_462e0i4u0x3s",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): white background, simple background, (confused, tilted head, ?, thinking:1.3), constricted pupils\n바꾼 점: tilted head→head tilt"
+    },
+    {
+      "id": "scn_4k2f712k4g4d",
+      "code": "14",
+      "name": "유혹",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "(seductive smile:1.1), tongue out, half-closed eyes, blush, heart, open mouth",
+      "negative": "",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        },
+        {
+          "id": "frg_462e0i4u0x3s",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): white background, simple background, (seductive:1.5), tongue out, half-closed eyes, sticking out tongue, blush, heart, open mouth\n바꾼 점: sticking out tongue 중복 제거, 강도 1.5→1.1"
+    },
+    {
+      "id": "scn_4p4s3l1o1u0s",
+      "code": "15",
+      "name": "삐짐",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "pout, puffed cheeks, looking away, (crossed arms:1.1)",
+      "negative": "sweat",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): pout, puffed cheeks, looking away, (turning head, crossed arms:1.3)\n원본 네거티브: sweat\n바꾼 점: turning head는 looking away와 겹쳐서 뺌"
+    },
+    {
+      "id": "scn_00146x473r3y",
+      "code": "16",
+      "name": "애정",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "(light smile:1.1), blush, looking at viewer, heart, heart-shaped pupils",
+      "negative": "sweat",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): (loving gaze, kind smile:1.3), blush, heart, (floating heart, heart in pupils:1.3)\n원본 네거티브: sweat\n바꾼 점: heart in pupils→heart-shaped pupils, loving gaze→looking at viewer"
+    },
+    {
+      "id": "scn_603h341j4y5b",
+      "code": "17",
+      "name": "감탄",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "(surprised:1.15), amazed, :o, wide-eyed",
+      "negative": "sweat, blush, hands",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): (amazed:1.5), (surprised:1.3), small open mouth, twitching\n원본 네거티브: sweat, blush, hands\n바꾼 점: small open mouth→:o, twitching은 태그가 아니라 뺌"
+    },
+    {
+      "id": "scn_721x1s1v633v",
+      "code": "18",
+      "name": "격노",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "(furious:1.15), anger vein, screaming, open mouth",
+      "negative": "sweat",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        },
+        {
+          "id": "frg_462e0i4u0x3s",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): white background, simple background, (furious, enraged:1.3), vein anime, screaming, (open mouth:1.3)\n원본 네거티브: (sweat:1.3)\n바꾼 점: vein anime→anger vein, enraged 중복 제거"
+    },
+    {
+      "id": "scn_6t540n6g5e05",
+      "code": "19",
+      "name": "깜짝",
+      "groupId": "grp_1c505l076k18",
+      "prompt": ":o, (surprised:1.1), wide-eyed",
+      "negative": "closed eyes",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        },
+        {
+          "id": "frg_462e0i4u0x3s",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): white background, simple background, o-shaped mouth, (surprised, big opened eyes:1.3)\n원본 네거티브: (closed eyes:1.3)\n바꾼 점: o-shaped mouth→:o, big opened eyes→wide-eyed"
+    },
+    {
+      "id": "scn_0o52613w041l",
+      "code": "20",
+      "name": "키스",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "(incoming kiss:1.15), pov, close-up, from above, closed eyes, open mouth, tongue",
+      "negative": "thick lips",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): (from above, close-up, POV shot, first person perspective, kiss face, closed eyes, warm breath, romantic mood, soft focus, detailed facial features, gentle expression, intimate moment:1.3), open mouth, showing tongue, incoming kiss\n원본 네거티브: thirck lips\n바꾼 점: 문장형 묘사(warm breath, romantic mood 등)를 빼고 태그만 남김. 네거티브 오타 수정"
+    },
+    {
+      "id": "scn_4f03266w2i65",
+      "code": "21",
+      "name": "으쓱",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "(shrugging:1.15), palms up, head tilt, ?, bored",
+      "negative": "sweat",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): (shrug, ?, both palms up, head tilt, raised shoulders, indifferent expression:1.3)\n원본 네거티브: sweat\n바꾼 점: shrug→shrugging, indifferent expression→bored"
+    },
+    {
+      "id": "scn_49300y6p3j2b",
+      "code": "22",
+      "name": "의기양양",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "(hands on own hips:1.1), smug, smile, closed eyes, blush",
+      "negative": "sweat",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): (blush:1.3), (proud, hands on hips, confident smile, satisfied nod, closed eyes:1.5)\n원본 네거티브: sweat\n바꾼 점: 강도 1.5→1.1, proud·satisfied nod는 태그가 아니라 smug로"
+    },
+    {
+      "id": "scn_570i494z5a1w",
+      "code": "23",
+      "name": "공포",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "(scared:1.15), turn pale, shaded face, wide-eyed, constricted pupils, open mouth, trembling, tears, sweat, from above",
+      "negative": "",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        },
+        {
+          "id": "frg_462e0i4u0x3s",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): white background, (scared, shaded face, pale face, wide eyes, trembling pupils, open mouth, shivering, horrified, tears, sweat:1.3), from above\n바꾼 점: pale face→turn pale, trembling pupils→constricted pupils, shivering·horrified 중복 정리"
+    },
+    {
+      "id": "scn_2d2i4k0q3573",
+      "code": "24",
+      "name": "도게자",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "(dogeza:1.15), completely nude, ass, trembling, from above, (folded clothes:1.1)",
+      "negative": "from side",
+      "elements": [],
+      "settings": {
+        "modes": {
+          "generation": "custom"
+        },
+        "values": {
+          "generation": {
+            "width": 1216,
+            "height": 832
+          }
+        }
+      },
+      "enabled": true,
+      "note": "원본(nAI): (dogeza, trembling, completely nude, ass:1.3), (from above:1.06), (folded clothes:1.3)\n원본 네거티브: from side\n바꾼 점: 강도 정리. 엎드린 전신이라 가로 해상도(1216×832)로 바꿈"
+    },
+    {
+      "id": "scn_4z5w4t5f5b1u",
+      "code": "25",
+      "name": "아쿠아 울음",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "(crying aqua \\(meme\\):1.15), (wavy mouth:1.1), tearing up, open mouth, screaming, tongue, chibi, comic, deformed, face focus, close-up, from above",
+      "negative": "full body, lower body, armpits, blue hair",
+      "elements": [
+        {
+          "id": "frg_0j516s6p2r27",
+          "strength": null
+        }
+      ],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): (crying aqua \\(meme\\):1.5), (wavy mouth:1.5), (chibi, comic, deformed:1.06), tearing up, open mouth, (face focus, close-up, from above:1.5), (deformed:1.15), upper body, (tongue:1.12), (screaming:1.15), (face focus:1.5), chibi, comic\n원본 네거티브: full body, lower body, armpits\n바꾼 점: 두세 번씩 반복된 chibi·comic·deformed·face focus를 한 번씩만. 밈 태그가 아쿠아의 파란 머리를 끌어오지 않게 네거티브에 blue hair 추가"
+    },
+    {
+      "id": "scn_4b54615d0r0z",
+      "code": "80",
+      "name": "임신",
+      "groupId": "grp_1c505l076k18",
+      "prompt": "sitting, couch, (pregnant:1.1), indoors, living room, smile, happy, from above, from side, looking at viewer, hands on own stomach, (loose clothes:1.15), camisole",
+      "negative": "white background, simple background",
+      "elements": [],
+      "settings": {
+        "modes": {},
+        "values": {}
+      },
+      "enabled": true,
+      "note": "원본(nAI): sitting on sofa, (pregnant:1.15), indoors, smile, happy, from above, from side, looking at viewer, hands on own stomach, (loose clothes:1.5), camisole\n원본 네거티브: white background, simple background\n바꾼 점: sofa→couch, loose clothes 강도 1.5→1.15. 캐미솔 차림이라 기본 의상 조각은 뺌"
+    }
+  ],
+  "rows": [
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_075t3i0e1e4f",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_6h4b6r4p4c1o",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_4o5i4a6b5561",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_1k4u2f6q6p2m",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_3o223n0a3c3i",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_1810302o332c",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_6l1e1v374s4g",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_0d723y4b0g55",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_2a2m6b471u3s",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_696e593u2i5w",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_3b1l6z2b035c",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_174f5y0o6x0l",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_513z0e632d3l",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_4k2f712k4g4d",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_4p4s3l1o1u0s",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_00146x473r3y",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_603h341j4y5b",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_721x1s1v633v",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_6t540n6g5e05",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_0o52613w041l",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_4f03266w2i65",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_49300y6p3j2b",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_570i494z5a1w",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_2d2i4k0q3573",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_4z5w4t5f5b1u",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    },
+    {
+      "charId": "chr_5y4y680x271q",
+      "sceneId": "scn_4b54615d0r0z",
+      "status": "pending",
+      "seed": null,
+      "seedFrom": null,
+      "thumb": null,
+      "memo": "",
+      "confirmedFile": null,
+      "finalFile": null
+    }
+  ],
+  "settings": {
+    "modes": {
+      "prompt": "custom"
+    },
+    "values": {
+      "prompt": {
+        "qualityTags": "masterpiece, best quality, amazing quality, very aesthetic",
+        "defaultNegative": "worst quality, bad quality, low quality, lowres, bad anatomy, bad hands, extra fingers, missing fingers, jpeg artifacts, signature, watermark, text, loli, child, aged down"
+      }
+    }
+  },
+  "generate": {
+    "includeNonTarget": false
+  },
+  "createdAt": 1791628891438,
+  "updatedAt": 1791628891438
+}
