@@ -349,3 +349,15 @@ table.plain tr.skip td { color: var(--ink-faint); }
 .thumb-large { max-width: 100%; border-radius: 8px; border: 1px solid var(--line); }
 details > summary { cursor: pointer; color: var(--ink-soft); font-size: 13px; }
 kbd { font-family: var(--mono); font-size: 11px; padding: 0 5px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--panel-2); }
+
+/* ---------- 처음 화면 ---------- */
+.start { padding: 40px 24px 60px; }
+.start-inner { max-width: 980px; margin: 0 auto; }
+.start h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: -0.02em; }
+.start-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-top: 22px; }
+.start-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; }
+.start-card h3 { margin: 0 0 4px; font-size: 16px; }
+.start-card p { flex: 1; margin: 0 0 10px; }
+.start-card.primary { border-color: var(--accent); }
+.start-card .btn.big { justify-content: center; }
+.start .callout ol li + li { margin-top: 4px; }

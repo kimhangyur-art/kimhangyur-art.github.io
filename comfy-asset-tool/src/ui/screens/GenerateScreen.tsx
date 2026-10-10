@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { downloadJson, safeFileName, stamp } from '../../lib/download';
+import { WORKFLOW_FILE, jsonBlob, safeFileName, saveFile, stamp } from '../../lib/download';
 import { planGeneration, type GenMode, type PlannedRow } from '../../lib/plan';
 import { buildWorkflow, type BuildStats } from '../../lib/workflow/generate';
 import type { Issue } from '../../lib/types';
@@ -21,12 +21,19 @@ export function GenerateScreen() {
   const byGroup = new Map<string, number>();
   for (const r of plan.targets) byGroup.set(r.group.name, (byGroup.get(r.group.name) ?? 0) + 1);
 
-  const generate = () => {
+  const generate = async () => {
     try {
       const { workflow, stats } = buildWorkflow(project, library, plan);
-      downloadJson(workflow, `${safeFileName(project.name)}_${mode === 'draft' ? '초안' : '마무리'}_${stamp()}.json`);
+      const r = await saveFile(
+        { ...WORKFLOW_FILE, suggestedName: `${safeFileName(project.name)}_${mode === 'draft' ? '초안' : '마무리'}_${stamp()}.json` },
+        () => jsonBlob(workflow),
+      );
+      if (r.status === 'cancelled') return;
       setLastStats(stats);
-      toast(`워크플로우를 저장했습니다: ${stats.targets}장, 노드 ${stats.nodes}개`, 'ok');
+      toast(
+        `${r.status === 'saved' ? `저장했습니다: ${r.name}` : `다운로드 폴더에 저장했습니다: ${r.name}`} · ${stats.targets}장. ComfyUI 창에 끌어다 놓고 실행하세요.`,
+        'ok',
+      );
     } catch (e) {
       toast(`만들지 못했습니다: ${(e as Error).message}`, 'error');
     }
@@ -37,7 +44,9 @@ export function GenerateScreen() {
       <div className="page-head">
         <div>
           <h2>생성</h2>
-          <p>대상 줄을 모두 담은 ComfyUI 워크플로우 JSON 하나를 만듭니다. ComfyUI 화면에 끌어다 놓거나 [불러오기]로 엽니다.</p>
+          <p>
+            대상 줄을 모두 담은 ComfyUI용 JSON 파일 하나를 만듭니다. 받은 파일을 ComfyUI 창에 끌어다 놓고(또는 메뉴의 열기) 실행(Run / Queue) 버튼을 누르면 됩니다.
+          </p>
         </div>
       </div>
 
@@ -59,8 +68,8 @@ export function GenerateScreen() {
               title="확정·완성·꺼진 줄도 넣되 SaveImage만 꺼 둡니다. ComfyUI가 계산하지 않고, Ctrl+M으로 다시 켤 수 있습니다."
             />
             <span className="right">
-              <button className="btn primary big" disabled={plan.blocked || plan.targets.length === 0} onClick={generate}>
-                워크플로우 JSON 저장
+              <button className="btn primary big" disabled={plan.blocked || plan.targets.length === 0} onClick={() => void generate()}>
+                ComfyUI용 JSON 내보내기
               </button>
             </span>
           </div>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { downloadBlob, pickFiles, safeFileName, stamp } from '../../lib/download';
+import { ZIP_FILE, pickFiles, safeFileName, saveFile, stamp } from '../../lib/download';
 import { exportList, makeZip } from '../../lib/exporter';
 import { listRows, rowTitle } from '../../lib/model';
 import { resolveSettings } from '../../lib/settings';
@@ -210,14 +210,17 @@ function ExportPanel() {
             onClick={async () => {
               setBusy(true);
               try {
-                const files: Array<{ path: string; data: Blob }> = [];
-                for (const e of ready) {
-                  const f = await getFile(fileKey(project.id, e.key));
-                  if (f) files.push({ path: e.path, data: f.blob });
-                }
-                const zip = await makeZip(files);
-                downloadBlob(zip, `${safeFileName(project.name)}_assets_${stamp()}.zip`);
-                toast(`${files.length}장을 zip으로 내려받았습니다.`, 'ok');
+                let count = 0;
+                const r = await saveFile({ ...ZIP_FILE, suggestedName: `${safeFileName(project.name)}_assets_${stamp()}.zip` }, async () => {
+                  const files: Array<{ path: string; data: Blob }> = [];
+                  for (const e of ready) {
+                    const f = await getFile(fileKey(project.id, e.key));
+                    if (f) files.push({ path: e.path, data: f.blob });
+                  }
+                  count = files.length;
+                  return makeZip(files);
+                });
+                if (r.status !== 'cancelled') toast(`${count}장을 zip으로 저장했습니다: ${r.name}`, 'ok');
               } catch (e) {
                 toast(`zip을 만들지 못했습니다: ${(e as Error).message}`, 'error');
               } finally {

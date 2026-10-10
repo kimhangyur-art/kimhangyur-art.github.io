@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { viewUrlFileName } from './lib/comfyApi';
-import { downloadJson, safeFileName } from './lib/download';
 import { processDroppedFiles, refreshFinals } from './store/actions';
+import { saveProject } from './store/projectFile';
 import { flushSave, useStore, type TabId } from './store/store';
 import { CharactersScreen } from './ui/screens/CharactersScreen';
 import { ConfirmScreen } from './ui/screens/ConfirmScreen';
@@ -10,6 +10,7 @@ import { GenerateScreen } from './ui/screens/GenerateScreen';
 import { ProgressScreen } from './ui/screens/ProgressScreen';
 import { ScenesScreen } from './ui/screens/ScenesScreen';
 import { SettingsScreen } from './ui/screens/SettingsScreen';
+import { StartScreen } from './ui/screens/StartScreen';
 import { TableScreen } from './ui/screens/TableScreen';
 
 const NAV: Array<{ section: string; items: Array<{ id: TabId; label: string; step?: number }> }> = [
@@ -60,11 +61,26 @@ export function App() {
   const canRedo = useStore((s) => s.future.length > 0);
   const toasts = useStore((s) => s.toasts);
   const dismiss = useStore((s) => s.dismissToast);
-  const toast = useStore((s) => s.toast);
   const comfyState = useStore((s) => s.comfyStatus.state);
   const hasComfy = useStore((s) => !!s.comfy);
   const saveError = useStore((s) => s.saveError);
   const [dragging, setDragging] = useState(false);
+  // 프로그램을 켤 때마다 처음 화면을 보여 준다 (같은 창에서 새로고침하면 다시 보이지 않음)
+  const [showStart, setShowStart] = useState(() => {
+    try {
+      return sessionStorage.getItem('comfy-asset-tool.started') !== '1';
+    } catch {
+      return true;
+    }
+  });
+  const closeStart = () => {
+    try {
+      sessionStorage.setItem('comfy-asset-tool.started', '1');
+    } catch {
+      /* 무시 */
+    }
+    setShowStart(false);
+  };
 
   useEffect(() => {
     void refreshFinals();
@@ -79,9 +95,7 @@ export function App() {
         useStore.getState().redo();
       } else if (k === 's') {
         e.preventDefault();
-        flushSave();
-        const p = useStore.getState().project;
-        downloadJson(p, `${safeFileName(p.name)}.asset-project.json`);
+        void saveProject();
       }
     };
     const onUnload = () => flushSave();
@@ -159,10 +173,13 @@ export function App() {
         <span className="brand">
           캐릭터 에셋 공방<small>ComfyUI 보조</small>
         </span>
+        <button className="btn ghost" onClick={() => setShowStart(true)} title="새 파일 만들기 · 파일 열기">
+          처음 화면
+        </button>
         <input
           className="project-name"
           value={project.name}
-          title="프로젝트 이름"
+          title="작업 이름"
           onChange={(e) => update((d) => void (d.name = e.target.value), 'project-name')}
         />
         <span className="spacer" />
@@ -182,14 +199,10 @@ export function App() {
         </button>
         <button
           className="btn"
-          title="프로젝트 파일로 저장 (Ctrl+S)"
-          onClick={() => {
-            flushSave();
-            downloadJson(project, `${safeFileName(project.name)}.asset-project.json`);
-            toast('프로젝트 파일을 저장했습니다.', 'ok');
-          }}
+          title="작업을 파일로 저장 (Ctrl+S)"
+          onClick={() => void saveProject()}
         >
-          프로젝트 저장
+          파일 저장
         </button>
       </header>
       <div className="body">
@@ -198,7 +211,14 @@ export function App() {
             <div key={sec.section}>
               <h4>{sec.section}</h4>
               {sec.items.map((it) => (
-                <button key={it.id} className={tab === it.id ? 'active' : ''} onClick={() => setTab(it.id)}>
+                <button
+                  key={it.id}
+                  className={tab === it.id && !showStart ? 'active' : ''}
+                  onClick={() => {
+                    setTab(it.id);
+                    closeStart();
+                  }}
+                >
                   {it.step && <span className="step">{it.step}</span>}
                   {it.label}
                   {counts[it.id] && <span className="count">{counts[it.id]}</span>}
@@ -210,7 +230,7 @@ export function App() {
             흐름: 준비 → 초안 생성 → PNG 확정 → (반복) → 마무리 생성 → 완성 PNG → zip
           </div>
         </nav>
-        <main className="main">{SCREENS[tab]()}</main>
+        <main className="main">{showStart ? <StartScreen onClose={closeStart} /> : SCREENS[tab]()}</main>
       </div>
       {dragging && (
         <div className="drop-overlay">

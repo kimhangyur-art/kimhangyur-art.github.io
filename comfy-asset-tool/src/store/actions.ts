@@ -642,7 +642,7 @@ export async function connectComfy(url?: string) {
 // 프로젝트
 
 export function startNewProject() {
-  if (!confirm('새 프로젝트를 시작할까요? 지금 프로젝트는 실행 취소로 되돌릴 수 있지만, 파일로 저장해 두는 것을 권장합니다.')) return;
+  if (!confirm('새 파일을 시작할까요? 지금 작업은 실행 취소로 되돌릴 수 있지만, [파일 저장]으로 저장해 두는 것을 권장합니다.')) return;
   const keep = S().project;
   const p = newProject();
   p.checkpoint = keep.checkpoint;

@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { DEFAULT_COMFY_URL } from '../../lib/comfyApi';
-import { downloadJson, pickFiles, safeFileName, stamp } from '../../lib/download';
-import { normalizeProject } from '../../lib/model';
+import { jsonBlob, pickFiles, saveFile, stamp } from '../../lib/download';
 import { PRESETS, getPreset } from '../../lib/presets';
 import { effectiveFamily, findMyPreset } from '../../lib/settings';
 import type { FamilyId, Library } from '../../lib/types';
-import { connectComfy, deleteMyPreset, refreshFinals, saveMyPreset, startExample, startNewProject } from '../../store/actions';
-import { flushSave, useStore } from '../../store/store';
+import { connectComfy, deleteMyPreset, saveMyPreset, startExample, startNewProject } from '../../store/actions';
+import { openProject, saveProject } from '../../store/projectFile';
+import { useStore } from '../../store/store';
 import { Check, Combo, Field, TextInput } from '../common';
 import { SettingsEditor } from '../SettingsEditor';
 
@@ -269,57 +269,46 @@ function ComfyPanel() {
 }
 
 function ProjectPanel() {
-  const project = useStore((s) => s.project);
   const library = useStore((s) => s.library);
-  const replaceProject = useStore((s) => s.replaceProject);
   const toast = useStore((s) => s.toast);
   const saveError = useStore((s) => s.saveError);
   return (
     <div className="panel">
       <div className="panel-head">
-        <h3>프로젝트 · 라이브러리</h3>
+        <h3>파일 · 라이브러리</h3>
       </div>
       <div className="panel-body">
         <p className="small muted" style={{ marginTop: 0 }}>
-          프로젝트는 브라우저에 자동 저장됩니다. 다른 컴퓨터로 옮기거나 백업하려면 파일로 저장하세요. 완성 이미지 원본은 이 브라우저에만 보관되므로 zip으로 내려받아 두세요.
+          작업은 자동으로 저장됩니다. 다른 컴퓨터로 옮기거나 보관하려면 파일로 저장하세요. 완성 이미지 원본은 이 브라우저에만 보관되므로 zip으로 내려받아 두세요.
         </p>
         {saveError && <div className="issue warn">{saveError}</div>}
         <div className="btn-row">
-          <button
-            className="btn"
-            onClick={() => {
-              flushSave();
-              downloadJson(project, `${safeFileName(project.name)}.asset-project.json`);
-            }}
-          >
-            프로젝트 저장
+          <button className="btn" onClick={() => void saveProject()}>
+            파일 저장
           </button>
-          <button
-            className="btn"
-            onClick={async () => {
-              const [f] = await pickFiles('.json,application/json');
-              if (!f) return;
-              try {
-                const p = normalizeProject(JSON.parse(await f.text()));
-                replaceProject(p);
-                void refreshFinals();
-                toast(`"${p.name}"을(를) 불러왔습니다.`, 'ok');
-              } catch (e) {
-                toast(`불러오지 못했습니다: ${(e as Error).message}`, 'error');
-              }
-            }}
-          >
-            프로젝트 불러오기
+          <button className="btn" onClick={() => void saveProject({ saveAs: true })}>
+            다른 이름으로 저장
+          </button>
+          <button className="btn" onClick={() => void openProject()}>
+            파일 열기
           </button>
           <button className="btn" onClick={startNewProject}>
-            새 프로젝트
+            새 파일
           </button>
           <button className="btn ghost" onClick={() => confirm('지금 프로젝트를 예시 프로젝트로 바꿉니다. (실행 취소 가능)') && startExample()}>
             예시 프로젝트
           </button>
         </div>
         <div className="btn-row" style={{ marginTop: 8 }}>
-          <button className="btn small" onClick={() => downloadJson(library, `asset-tool-library-${stamp()}.json`)}>
+          <button
+            className="btn small"
+            onClick={() =>
+              void saveFile(
+                { description: '라이브러리 파일', mime: 'application/json', ext: '.json', suggestedName: `asset-tool-library-${stamp()}.json` },
+                () => jsonBlob(library),
+              )
+            }
+          >
             라이브러리(내 세트·내 프리셋) 내보내기
           </button>
           <button
