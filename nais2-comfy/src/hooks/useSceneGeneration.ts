@@ -131,6 +131,7 @@ async function generateScene(presetId: string, scene: SceneCard, signal: AbortSi
         // 조각(와일드카드)은 장마다 새로 뽑는다. 씬 해상도가 없으면 메인 화면 해상도
         const params = await buildGenerationParams({
             scenePrompt: scene.scenePrompt,
+            sceneNegative: scene.sceneNegative,
             width: scene.width || undefined,
             height: scene.height || undefined,
             seed,

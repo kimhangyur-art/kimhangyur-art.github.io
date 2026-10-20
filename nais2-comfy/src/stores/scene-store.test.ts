@@ -2,6 +2,11 @@ import { describe, expect, it, beforeEach } from 'vitest'
 import { parseScenePresetJson, useSceneStore, isUpscaledSceneImage } from './scene-store'
 
 describe('parseScenePresetJson (원래 NAIS2가 읽던 네 가지 형식)', () => {
+    it('D 형식의 씬 부정 프롬프트(sceneNegative)를 지킨다', () => {
+        const r = parseScenePresetJson({ name: 'p', scenes: [{ name: '울음', scenePrompt: 'crying', sceneNegative: 'blush' }, { name: '미소', scenePrompt: 'smile' }] })
+        expect(r?.scenes.map(s => [s.name, s.sceneNegative])).toEqual([['울음', 'blush'], ['미소', undefined]])
+    })
+
     it('A. 배열 형식', () => {
         const r = parseScenePresetJson([{ scene_name: '웃음', scene_prompt: 'smile' }, { scene_prompt: 'cry' }])
         expect(r?.scenes.map(s => [s.name, s.scenePrompt])).toEqual([['웃음', 'smile'], ['Untitled Scene', 'cry']])

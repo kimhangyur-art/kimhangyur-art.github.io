@@ -15,6 +15,8 @@ import { readFile } from '@tauri-apps/plugin-fs'
 export interface PromptOverrides {
     /** 씬 프롬프트 (추가 프롬프트와 세부 프롬프트 사이에 들어간다, 원래 NAIS2 씬 모드 순서) */
     scenePrompt?: string
+    /** 씬 부정 프롬프트 (메인 부정 프롬프트 뒤에 붙는다) */
+    sceneNegative?: string
     /** 변형 모드: 합친 긍정 프롬프트를 마지막에 바꾼다 */
     transformPositive?: (prompt: string) => string
 }
@@ -33,7 +35,7 @@ export async function buildGenerationParams(opts: BuildOptions = {}): Promise<Ge
     const parts = [removeComments(g.basePrompt), removeComments(g.additionalPrompt), removeComments(opts.scenePrompt ?? ''), removeComments(g.detailPrompt)]
     let prompt = await processWildcards(joinPrompt(...parts))
     if (opts.transformPositive) prompt = opts.transformPositive(prompt)
-    const negative = await processWildcards(removeComments(g.negativePrompt))
+    const negative = await processWildcards(joinPrompt(removeComments(g.negativePrompt), removeComments(opts.sceneNegative ?? '')))
 
     const { characters } = useCharacterPromptStore.getState()
     const characterPrompts = await Promise.all(

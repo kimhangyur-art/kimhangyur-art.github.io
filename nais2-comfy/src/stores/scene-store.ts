@@ -38,6 +38,8 @@ export interface SceneCard {
     id: string
     name: string
     scenePrompt: string
+    /** 이 씬에만 더하는 부정 프롬프트 (NAIS2 Comfy 추가 항목. 메인 부정 프롬프트 뒤에 붙는다) */
+    sceneNegative?: string
     queueCount: number  // Number of images to generate
     images: SceneImage[]  // Generated images for this scene
     width?: number
@@ -70,6 +72,7 @@ interface SceneState {
     duplicateScene: (presetId: string, sceneId: string) => void
     renameScene: (presetId: string, sceneId: string, name: string) => Promise<void>
     updateScenePrompt: (presetId: string, sceneId: string, prompt: string) => void
+    updateSceneNegative: (presetId: string, sceneId: string, negative: string) => void
     updateSceneSettings: (presetId: string, sceneId: string, settings: { width?: number, height?: number }) => void
     updateAllScenesResolution: (presetId: string, width: number, height: number) => void
     reorderScenes: (presetId: string, scenes: SceneCard[]) => void
@@ -288,6 +291,7 @@ export function parseScenePresetJson(jsonContent: unknown): { name: string; scen
                     images: importedImages(sc.images),
                     createdAt: typeof sc.createdAt === 'number' ? sc.createdAt : Date.now(),
                     ...(width && height ? { width, height } : {}),
+                    ...(jsonString(sc.sceneNegative) ? { sceneNegative: jsonString(sc.sceneNegative) } : {}),
                 })
             }),
         }
@@ -458,6 +462,14 @@ export const useSceneStore = create<SceneState>()(
                     ),
                 }))
             },
+
+            updateSceneNegative: (presetId, sceneId, negative) => set((state) => ({
+                presets: state.presets.map((preset) =>
+                    preset.id === presetId
+                        ? { ...preset, scenes: preset.scenes.map((scene) => (scene.id === sceneId ? { ...scene, sceneNegative: negative } : scene)) }
+                        : preset
+                ),
+            })),
 
             updateScenePrompt: (presetId, sceneId, prompt) => set((state) => ({
                 presets: state.presets.map((preset) =>

@@ -1,0 +1,62 @@
+{
+  "_exportedAt": "2026-10-20T00:00:00.000Z",
+  "_version": "2.3",
+  "_note": "윤하린 · 장면 26종의 메인 프롬프트·체크포인트·로라·생성 값. 가져오면 지금 메인 프롬프트와 생성 설정만 바뀝니다 (씬·조각·설정 화면 값은 그대로).",
+  "nais2-generation": {
+    "state": {
+      "basePrompt": "masterpiece, best quality, amazing quality, very aesthetic\n1girl, solo, large breasts",
+      "additionalPrompt": "",
+      "detailPrompt": "balanced contrast, high contrast, (thick outlines:0.3)",
+      "negativePrompt": "worst quality, bad quality, low quality, lowres, bad anatomy, bad hands, extra fingers, missing fingers, jpeg artifacts, signature, watermark, text\nblack hair\nmultiple views, (pale color:0.2), (pastel colors:0.3)",
+      "model": "waiIllustriousSDXL_v170.safetensors",
+      "modelFamily": "auto",
+      "loras": [
+        {
+          "id": "lora-yh-1",
+          "name": "my_style-000004.safetensors",
+          "enabled": true,
+          "strengthModel": 1,
+          "strengthClip": 0.1
+        },
+        {
+          "id": "lora-yh-2",
+          "name": "illustrious_masterpieces_v3.safetensors",
+          "enabled": true,
+          "strengthModel": 1,
+          "strengthClip": 0
+        },
+        {
+          "id": "lora-yh-3",
+          "name": "Eyes_for_Illustrious_Lora_Perfect_anime_eyes.safetensors",
+          "enabled": true,
+          "strengthModel": 0.4,
+          "strengthClip": 0.1
+        }
+      ],
+      "clipSkip": 2,
+      "hires": {
+        "enabled": false,
+        "method": "pixel",
+        "scale": 1.5,
+        "denoise": 0.4,
+        "steps": 15,
+        "upscaleModel": ""
+      },
+      "steps": 15,
+      "cfgScale": 5.5,
+      "cfgRescale": 0.4,
+      "sampler": "euler_ancestral",
+      "scheduler": "normal",
+      "qualityToggle": false,
+      "ucPreset": 4,
+      "seedLocked": false,
+      "selectedResolution": {
+        "label": "Square",
+        "width": 1024,
+        "height": 1024
+      },
+      "batchCount": 1
+    },
+    "version": 0
+  }
+}

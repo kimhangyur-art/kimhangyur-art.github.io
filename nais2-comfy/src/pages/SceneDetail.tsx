@@ -301,6 +301,8 @@ export default function SceneDetail() {
     // Auto-save prompt logic - hooks must be before conditional return
     const updateScenePrompt = useSceneStore(state => state.updateScenePrompt)
     const [localPrompt, setLocalPrompt] = useState(scene?.scenePrompt || '')
+    const updateSceneNegative = useSceneStore(state => state.updateSceneNegative)
+    const [localNegative, setLocalNegative] = useState(scene?.sceneNegative || '')
 
     const nav = useNavigate()
 
@@ -342,8 +344,21 @@ export default function SceneDetail() {
     useEffect(() => {
         if (scene) {
             setLocalPrompt(scene.scenePrompt)
+            setLocalNegative(scene.sceneNegative || '')
         }
     }, [scene?.id])
+
+    // 씬 부정 프롬프트: 잠깐 멈추면 저장, 화면을 떠날 때도 저장
+    useEffect(() => {
+        if (!scene || !activePresetId) return
+        if (localNegative === (scene.sceneNegative || '')) return
+        const timer = setTimeout(() => updateSceneNegative(activePresetId, scene.id, localNegative), 800)
+        return () => {
+            clearTimeout(timer)
+            const current = useSceneStore.getState().presets.find(p => p.id === activePresetId)?.scenes.find(s => s.id === scene.id)
+            if (current && localNegative !== (current.sceneNegative || '')) updateSceneNegative(activePresetId, scene.id, localNegative)
+        }
+    }, [localNegative, scene, activePresetId, updateSceneNegative])
 
     // Debounced save of prompt to store + save on unmount
     useEffect(() => {
@@ -651,6 +666,17 @@ export default function SceneDetail() {
                     style={{ fontSize: `${promptFontSize}px` }}
                     value={localPrompt}
                     onChange={(e) => setLocalPrompt(e.target.value)}
+                />
+                <label className="text-xs font-medium text-muted-foreground mt-2 mb-1 flex items-center gap-2">
+                    {t('comfy.scene.negative', '씬 부정 프롬프트')}
+                    <span className="font-normal opacity-70">{t('comfy.scene.negativeHint', '이 씬에서만 빼고 싶은 것. 메인 부정 프롬프트 뒤에 붙습니다.')}</span>
+                </label>
+                <AutocompleteTextarea
+                    placeholder={t('comfy.scene.negativePlaceholder', '예: sweat, blush')}
+                    className="min-h-[56px] h-[56px] resize-none rounded-xl"
+                    style={{ fontSize: `${promptFontSize}px` }}
+                    value={localNegative}
+                    onChange={(e) => setLocalNegative(e.target.value)}
                 />
             </div >
 

@@ -1,0 +1,205 @@
+{
+  "name": "윤하린 · 장면 26종",
+  "scenes": [
+    {
+      "name": "1 기본",
+      "scenePrompt": "expressionless, closed mouth\n# 원본(nAI): neutral face\n# 원본 네거티브: sweat\n# 바꾼 점: neutral face는 Danbooru 태그가 아니라 expressionless, closed mouth로 바꿈",
+      "sceneNegative": "sweat",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891438
+    },
+    {
+      "name": "2 미소",
+      "scenePrompt": "(light smile:1.1), closed mouth, happy\n# 원본(nAI): (smiling, light smile, closed mouth, happy:1.3), white background, simple background\n# 바꾼 점: smiling 중복 제거, 강도 1.3→1.1",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891439
+    },
+    {
+      "name": "3 불쾌",
+      "scenePrompt": "frown, annoyed, closed mouth\n# 원본(nAI): (displeased, frowning, slight frown:1.3), white background, simple background\n# 원본 네거티브: blush, sweat\n# 바꾼 점: 찡그림 태그 셋을 frown, annoyed로 정리",
+      "sceneNegative": "blush, sweat",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891440
+    },
+    {
+      "name": "4 부끄러움",
+      "scenePrompt": "(blush:1.1), shy, looking away\n# 원본(nAI): (blushing, shy, averting gaze, rosy cheeks:1.3), white background, simple background\n# 바꾼 점: blushing·rosy cheeks를 blush 하나로",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891441
+    },
+    {
+      "name": "5 놀람",
+      "scenePrompt": "(surprised:1.1), wide-eyed, open mouth\n# 원본(nAI): (surprised, wide eyes, open mouth, stunned:1.3), white background, simple background\n# 바꾼 점: stunned 중복 제거, wide eyes→wide-eyed",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891442
+    },
+    {
+      "name": "6 경멸",
+      "scenePrompt": "(contempt:1.1), smug, shaded face, half-closed eyes, looking down\n# 원본(nAI): white background, simple background, (contempt, scornful, smug, frown, displeased, shaded face:1.3), looking down\n# 원본 네거티브: blush, sweat\n# 바꾼 점: smug와 부딪히는 frown·displeased를 빼고 half-closed eyes 추가",
+      "sceneNegative": "blush, sweat",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891443
+    },
+    {
+      "name": "7 고함",
+      "scenePrompt": "(angry:1.1), open mouth, straight-on\n# 원본(nAI): (angry, shouting, yelling, open mouth:1.36), straight-on\n# 바꾼 점: yelling 중복 제거, 강도 1.36→1.1",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891444
+    },
+    {
+      "name": "8 울음",
+      "scenePrompt": "crying, streaming tears, (sad:1.1)\n# 원본(nAI): white background, simple background, (crying tears, streaming tears, sad:1.12), (sad:1.3), one ear down\n# 원본 네거티브: blush\n# 바꾼 점: sad 두 번→한 번. one ear down은 동물 귀 캐릭터용이라 뺌",
+      "sceneNegative": "blush",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891445
+    },
+    {
+      "name": "9 웃음",
+      "scenePrompt": "(laughing:1.1), grin, closed eyes, happy\n# 원본(nAI): white background, simple background, (happy laughing, grin, closed eyes \\(happy\\):1.3)\n# 바꾼 점: 강도 1.3→1.1",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891446
+    },
+    {
+      "name": "10 흥분",
+      "scenePrompt": "aroused, heavy breathing, blush, heart-shaped pupils, covered nipples\n# 원본(nAI): white background, simple background, (aroused, heavy breathing, covered nippls:1.3), flushed face, heart-shaped pupils\n# 바꾼 점: 오타(nippls) 수정, flushed face→full-face blush",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891447
+    },
+    {
+      "name": "11 혐오",
+      "scenePrompt": "disgust, scowl, grimace\n# 원본(nAI): white background, simple background, (disgust, grimace, scowling, nose wrinkle:1.5)\n# 바꾼 점: 강도 1.5→1.15, 비슷한 태그 정리",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891448
+    },
+    {
+      "name": "12 증오",
+      "scenePrompt": "glaring, shaded face, angry, clenched teeth\n# 원본(nAI): white background, simple background, (hatred, malicious face, glaring, shaded face:1.3)\n# 바꾼 점: hatred·malicious face는 태그가 아니라 angry, clenched teeth로",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891449
+    },
+    {
+      "name": "13 갸웃",
+      "scenePrompt": "(confused:1.1), head tilt, ?, thinking, constricted pupils\n# 원본(nAI): white background, simple background, (confused, tilted head, ?, thinking:1.3), constricted pupils\n# 바꾼 점: tilted head→head tilt",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891450
+    },
+    {
+      "name": "14 유혹",
+      "scenePrompt": "(seductive smile:1.1), tongue out, half-closed eyes, blush, heart, open mouth\n# 원본(nAI): white background, simple background, (seductive:1.5), tongue out, half-closed eyes, sticking out tongue, blush, heart, open mouth\n# 바꾼 점: sticking out tongue 중복 제거, 강도 1.5→1.1",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891451
+    },
+    {
+      "name": "15 삐짐",
+      "scenePrompt": "pout, puffed cheeks, looking away, (crossed arms:1.1)\n# 원본(nAI): pout, puffed cheeks, looking away, (turning head, crossed arms:1.3)\n# 원본 네거티브: sweat\n# 바꾼 점: turning head는 looking away와 겹쳐서 뺌",
+      "sceneNegative": "sweat",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891452
+    },
+    {
+      "name": "16 애정",
+      "scenePrompt": "(light smile:1.1), blush, looking at viewer, heart, heart-shaped pupils\n# 원본(nAI): (loving gaze, kind smile:1.3), blush, heart, (floating heart, heart in pupils:1.3)\n# 원본 네거티브: sweat\n# 바꾼 점: heart in pupils→heart-shaped pupils, loving gaze→looking at viewer",
+      "sceneNegative": "sweat",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891453
+    },
+    {
+      "name": "17 감탄",
+      "scenePrompt": "(surprised:1.15), amazed, :o, wide-eyed\n# 원본(nAI): (amazed:1.5), (surprised:1.3), small open mouth, twitching\n# 원본 네거티브: sweat, blush, hands\n# 바꾼 점: small open mouth→:o, twitching은 태그가 아니라 뺌",
+      "sceneNegative": "sweat, blush, hands",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891454
+    },
+    {
+      "name": "18 격노",
+      "scenePrompt": "furious, (anger vein:0.8), open mouth\n# 원본(nAI): white background, simple background, (furious, enraged:1.3), vein anime, screaming, (open mouth:1.3)\n# 원본 네거티브: (sweat:1.3)\n# 바꾼 점: vein anime→anger vein, enraged 중복 제거",
+      "sceneNegative": "sweat",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891455
+    },
+    {
+      "name": "19 깜짝",
+      "scenePrompt": ":o, (surprised:1.1), wide-eyed\n# 원본(nAI): white background, simple background, o-shaped mouth, (surprised, big opened eyes:1.3)\n# 원본 네거티브: (closed eyes:1.3)\n# 바꾼 점: o-shaped mouth→:o, big opened eyes→wide-eyed",
+      "sceneNegative": "closed eyes",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891456
+    },
+    {
+      "name": "20 키스",
+      "scenePrompt": "(incoming kiss:1.15), pov, close-up, from above, closed eyes, open mouth, tongue\n# 원본(nAI): (from above, close-up, POV shot, first person perspective, kiss face, closed eyes, warm breath, romantic mood, soft focus, detailed facial features, gentle expression, intimate moment:1.3), open mouth, showing tongue, incoming kiss\n# 원본 네거티브: thirck lips\n# 바꾼 점: 문장형 묘사(warm breath, romantic mood 등)를 빼고 태그만 남김. 네거티브 오타 수정",
+      "sceneNegative": "thick lips",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891457
+    },
+    {
+      "name": "21 으쓱",
+      "scenePrompt": "(shrugging:1.15), palms up, head tilt, ?, bored\n# 원본(nAI): (shrug, ?, both palms up, head tilt, raised shoulders, indifferent expression:1.3)\n# 원본 네거티브: sweat\n# 바꾼 점: shrug→shrugging, indifferent expression→bored",
+      "sceneNegative": "sweat",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891458
+    },
+    {
+      "name": "22 의기양양",
+      "scenePrompt": "(hands on own hips:1.1), smug, smile, closed eyes, blush\n# 원본(nAI): (blush:1.3), (proud, hands on hips, confident smile, satisfied nod, closed eyes:1.5)\n# 원본 네거티브: sweat\n# 바꾼 점: 강도 1.5→1.1, proud·satisfied nod는 태그가 아니라 smug로",
+      "sceneNegative": "sweat",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891459
+    },
+    {
+      "name": "23 공포",
+      "scenePrompt": "(scared:1.15), turn pale, shaded face, wide-eyed, constricted pupils, open mouth, trembling, tears, sweat, from above\n# 원본(nAI): white background, (scared, shaded face, pale face, wide eyes, trembling pupils, open mouth, shivering, horrified, tears, sweat:1.3), from above\n# 바꾼 점: pale face→turn pale, trembling pupils→constricted pupils, shivering·horrified 중복 정리",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891460
+    },
+    {
+      "name": "24 도게자",
+      "scenePrompt": "(dogeza:1.15), completely nude, ass, trembling, from above, (folded clothes:1.1)\n# 원본(nAI): (dogeza, trembling, completely nude, ass:1.3), (from above:1.06), (folded clothes:1.3)\n# 원본 네거티브: from side\n# 바꾼 점: 강도 정리. 엎드린 전신이라 가로 해상도(1216×832)로 바꿈",
+      "sceneNegative": "from side",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891461,
+      "width": 1216,
+      "height": 832
+    },
+    {
+      "name": "25 아쿠아 울음",
+      "scenePrompt": "(crying aqua \\(meme\\):1.2), (wavy mouth:1.05), tearing up, open mouth, (screaming:0.9), tongue, chibi, comic, deformed, face focus, close-up, from above\n# 원본(nAI): (crying aqua \\(meme\\):1.5), (wavy mouth:1.5), (chibi, comic, deformed:1.06), tearing up, open mouth, (face focus, close-up, from above:1.5), (deformed:1.15), upper body, (tongue:1.12), (screaming:1.15), (face focus:1.5), chibi, comic\n# 원본 네거티브: full body, lower body, armpits\n# 바꾼 점: 두세 번씩 반복된 chibi·comic·deformed·face focus를 한 번씩만. 밈 태그가 아쿠아의 파란 머리를 끌어오지 않게 네거티브에 blue hair 추가",
+      "sceneNegative": "full body, lower body, armpits, blue hair",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891462
+    },
+    {
+      "name": "80 임신",
+      "scenePrompt": "sitting, couch, (pregnant:1.1), indoors, living room, smile, happy, from above, from side, looking at viewer, hands on own stomach, (loose clothes:1.15), camisole\n# 원본(nAI): sitting on sofa, (pregnant:1.15), indoors, smile, happy, from above, from side, looking at viewer, hands on own stomach, (loose clothes:1.5), camisole\n# 원본 네거티브: white background, simple background\n# 바꾼 점: sofa→couch, loose clothes 강도 1.5→1.15. 캐미솔 차림이라 기본 의상 조각은 뺌",
+      "sceneNegative": "white background, simple background",
+      "queueCount": 0,
+      "images": [],
+      "createdAt": 1791628891463
+    }
+  ],
+  "createdAt": 1791628891438
+}
