@@ -1,0 +1,42 @@
+{
+  "RT_GROUP_ICON": {
+    "APP": {
+      "0000": ["icon.png"]
+    }
+  },
+  "RT_MANIFEST": {
+    "#1": {
+      "0409": {
+        "identity": {
+          "name": "NAIS2Comfy",
+          "version": "2.7.4.1"
+        },
+        "description": "NAIS2 Comfy",
+        "minimum-os": "win10",
+        "execution-level": "as invoker",
+        "dpi-awareness": "per monitor v2",
+        "use-common-controls-v6": true
+      }
+    }
+  },
+  "RT_VERSION": {
+    "#1": {
+      "0000": {
+        "fixed": {
+          "file_version": "2.7.4.1",
+          "product_version": "2.7.4.1"
+        },
+        "info": {
+          "0409": {
+            "CompanyName": "",
+            "FileDescription": "NAIS2 Comfy - NAIS2 화면으로 로컬 ComfyUI 쓰기",
+            "FileVersion": "2.7.4-comfy.1",
+            "LegalCopyright": "GPL-3.0 (NAIS2 by sunanakgo)",
+            "ProductName": "NAIS2 Comfy",
+            "ProductVersion": "2.7.4-comfy.1"
+          }
+        }
+      }
+    }
+  }
+}

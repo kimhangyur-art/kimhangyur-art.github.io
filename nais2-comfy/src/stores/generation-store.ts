@@ -1,14 +1,11 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { indexedDBStorage } from '@/lib/indexed-db'
-import { useAuthStore } from './auth-store'
 import { useSettingsStore } from './settings-store'
-import { generateImage, generateImageStream } from '@/services/novelai-api'
-import { writeFile, mkdir, exists, BaseDirectory } from '@tauri-apps/plugin-fs'
-import { pictureDir, join } from '@tauri-apps/api/path'
-import { useCharacterStore } from './character-store'
-import { useCharacterPromptStore } from './character-prompt-store'
-import { processWildcards } from '@/lib/fragment-processor'
+import { generateImage, DEFAULT_HIRES, type HiresSettings, type LoraEntry } from '@/services/comfyui-api'
+import { getFamily, normalizeSampler, normalizeScheduler, type FamilyId } from '@/services/comfy/families'
+import { buildGenerationParams } from '@/lib/comfy-params'
+import { saveOutputImage } from '@/lib/output-save'
 import { createThumbnail } from '@/lib/image-utils'
 import i18n from '@/i18n'
 import { toast } from '@/components/ui/use-toast'
@@ -28,14 +25,34 @@ interface HistoryItem {
     timestamp: Date
 }
 
-export const AVAILABLE_MODELS = [
-    { id: 'nai-diffusion-4-5-curated', name: 'NAI Diffusion V4.5 Curated' },
-    { id: 'nai-diffusion-4-5-full', name: 'NAI Diffusion V4.5 Full' },
-    { id: 'nai-diffusion-4-curated-preview', name: 'NAI Diffusion V4 Curated' },
-    { id: 'nai-diffusion-4-full', name: 'NAI Diffusion V4 Full' },
-    { id: 'nai-diffusion-3', name: 'NAI Diffusion V3 (Anime)' },
-    { id: 'nai-diffusion-furry-3', name: 'NAI Diffusion Furry V3' },
-] as const
+export type { HiresSettings, LoraEntry }
+
+/** 생성 설정 묶음 (프리셋 저장·불러오기에 쓴다) */
+export interface GenerationPresetFields {
+    basePrompt: string
+    additionalPrompt: string
+    detailPrompt: string
+    negativePrompt: string
+    model: string
+    modelFamily?: FamilyId | 'auto'
+    loras?: LoraEntry[]
+    clipSkip?: number
+    hires?: HiresSettings
+    steps: number
+    cfgScale: number
+    cfgRescale: number
+    sampler: string
+    scheduler: string
+    qualityToggle?: boolean
+    ucPreset?: number
+    selectedResolution: Resolution
+}
+
+let loraSeq = 0
+export function newLoraId(): string {
+    loraSeq += 1
+    return `lora-${Date.now().toString(36)}-${loraSeq}`
+}
 
 interface GenerationState {
     // Prompt fields
@@ -43,10 +60,15 @@ interface GenerationState {
     additionalPrompt: string
     detailPrompt: string
     negativePrompt: string
-    inpaintingPrompt: string
 
-    // Model selection
+    // Model selection (ComfyUI 체크포인트 파일 이름)
     model: string
+    /** 체크포인트 계열 (auto = 파일 이름으로 짐작). 품질 태그·UC 프리셋 글, v-pred 여부를 정한다 */
+    modelFamily: FamilyId | 'auto'
+    loras: LoraEntry[]
+    /** 1 = 건너뛰지 않음, 2 = CLIP skip 2 */
+    clipSkip: number
+    hires: HiresSettings
 
     // Generation settings
     steps: number
@@ -54,9 +76,6 @@ interface GenerationState {
     cfgRescale: number
     sampler: string
     scheduler: string
-    smea: boolean
-    smeaDyn: boolean
-    variety: boolean
 
     seed: number
     previewSeed: number | null
@@ -71,20 +90,15 @@ interface GenerationState {
     batchCount: number
     currentBatch: number
 
-    // I2I & Inpainting
-    sourceImage: string | null
-    strength: number
-    noise: number
-    mask: string | null
-    i2iMode: 'i2i' | 'inpaint' | null
-
     // Timing
     lastGenerationTime: number | null  // ms
     estimatedTime: number | null
 
     // State
     isGenerating: boolean // Deprecated in favor of generatingMode check? Or keep for local main mode state?
-    generatingMode: 'main' | 'scene' | null
+    generatingMode: 'main' | 'scene' | 'variation' | null
+    /** 지금 ComfyUI에서 돌고 있는 작업 번호 (중단할 때 쓴다) */
+    currentPromptId: string | null
     isCancelled: boolean
     previewImage: string | null
     history: HistoryItem[]
@@ -103,17 +117,22 @@ interface GenerationState {
     setAdditionalPrompt: (prompt: string) => void
     setDetailPrompt: (prompt: string) => void
     setNegativePrompt: (prompt: string) => void
-    setInpaintingPrompt: (prompt: string) => void
 
     setModel: (model: string) => void
+    setModelFamily: (family: FamilyId | 'auto') => void
+    setLoras: (loras: LoraEntry[]) => void
+    addLora: (name?: string) => void
+    updateLora: (id: string, patch: Partial<LoraEntry>) => void
+    removeLora: (id: string) => void
+    setClipSkip: (v: number) => void
+    setHires: (patch: Partial<HiresSettings>) => void
+    /** 체크포인트 계열 권장값(스텝·CFG·샘플러·스케줄러·CLIP skip·고화질 값)으로 맞춘다 */
+    applyFamilyDefaults: () => void
     setSteps: (steps: number) => void
     setCfgScale: (v: number) => void
     setCfgRescale: (v: number) => void
     setSampler: (v: string) => void
     setScheduler: (v: string) => void
-    setSmea: (v: boolean) => void
-    setSmeaDyn: (v: boolean) => void
-    setVariety: (v: boolean) => void
 
     setSeed: (seed: number) => void
     setPreviewSeed: (seed: number | null) => void
@@ -124,34 +143,8 @@ interface GenerationState {
 
     setBatchCount: (count: number) => void
 
-    // I2I Actions
-    setSourceImage: (img: string | null) => void
-    setReferenceImage: (img: string | null) => void
-    setStrength: (v: number) => void
-    setNoise: (v: number) => void
-    setMask: (mask: string | null) => void
-    setI2IMode: (mode: 'i2i' | 'inpaint' | null) => void
-    resetI2IParams: () => void
-
     // Batch update for preset loading (avoids multiple IndexedDB writes)
-    applyPreset: (preset: {
-        basePrompt: string
-        additionalPrompt: string
-        detailPrompt: string
-        negativePrompt: string
-        model: string
-        steps: number
-        cfgScale: number
-        cfgRescale: number
-        sampler: string
-        scheduler: string
-        smea: boolean
-        smeaDyn: boolean
-        variety?: boolean
-        qualityToggle?: boolean
-        ucPreset?: number
-        selectedResolution: Resolution
-    }) => void
+    applyPreset: (preset: GenerationPresetFields) => void
 
     generate: () => Promise<void>
     cancelGeneration: () => void
@@ -159,7 +152,8 @@ interface GenerationState {
     clearHistory: () => void
     setPreviewImage: (url: string | null) => void
     setIsGenerating: (v: boolean) => void // Only for Main Mode use ideally
-    setGeneratingMode: (mode: 'main' | 'scene' | null) => void
+    setGeneratingMode: (mode: 'main' | 'scene' | 'variation' | null) => void
+    setCurrentPromptId: (id: string | null) => void
     setStreamProgress: (progress: number) => void
     
     // Memory cleanup - call when leaving main mode to release large Base64 data
@@ -174,18 +168,18 @@ export const useGenerationStore = create<GenerationState>()(
             additionalPrompt: '',
             detailPrompt: '',
             negativePrompt: '',
-            inpaintingPrompt: '',
 
-            model: 'nai-diffusion-4-5-full',
+            model: '',
+            modelFamily: 'auto',
+            loras: [],
+            clipSkip: 2,
+            hires: { ...DEFAULT_HIRES },
 
             steps: 28,
-            cfgScale: 5.0,
+            cfgScale: 5.5,
             cfgRescale: 0.0,
-            sampler: 'k_euler_ancestral',
-            scheduler: 'karras',
-            smea: true,
-            smeaDyn: true,
-            variety: false,
+            sampler: 'euler_ancestral',
+            scheduler: 'normal',
 
             seed: Math.floor(Math.random() * 4294967295),
             previewSeed: null,
@@ -198,18 +192,12 @@ export const useGenerationStore = create<GenerationState>()(
             batchCount: 1,
             currentBatch: 0,
 
-            // I2I Init
-            sourceImage: null,
-            strength: 0.7,
-            noise: 0.0,
-            mask: null,
-            i2iMode: null,
-
             lastGenerationTime: null,
             estimatedTime: null,
 
             isGenerating: false,
             generatingMode: null,
+            currentPromptId: null,
             isCancelled: false,
             previewImage: null,
             history: [],
@@ -222,9 +210,32 @@ export const useGenerationStore = create<GenerationState>()(
             setAdditionalPrompt: (prompt) => set({ additionalPrompt: prompt }),
             setDetailPrompt: (prompt) => set({ detailPrompt: prompt }),
             setNegativePrompt: (prompt) => set({ negativePrompt: prompt }),
-            setInpaintingPrompt: (prompt) => set({ inpaintingPrompt: prompt }),
 
             setModel: (model) => set({ model }),
+            setModelFamily: (modelFamily) => set({ modelFamily }),
+            setLoras: (loras) => set({ loras }),
+            addLora: (name = '') => set((state) => ({
+                loras: [...state.loras, { id: newLoraId(), name, enabled: true, strengthModel: 1, strengthClip: 1 }],
+            })),
+            updateLora: (id, patch) => set((state) => ({
+                loras: state.loras.map((l) => (l.id === id ? { ...l, ...patch } : l)),
+            })),
+            removeLora: (id) => set((state) => ({ loras: state.loras.filter((l) => l.id !== id) })),
+            setClipSkip: (clipSkip) => set({ clipSkip: Math.max(1, Math.min(12, Math.round(clipSkip))) }),
+            setHires: (patch) => set((state) => ({ hires: { ...state.hires, ...patch } })),
+            applyFamilyDefaults: () => {
+                const { modelFamily, model, hires } = get()
+                const f = getFamily(modelFamily, model)
+                set({
+                    steps: f.steps,
+                    cfgScale: f.cfg,
+                    sampler: f.sampler,
+                    scheduler: f.scheduler,
+                    clipSkip: f.clipSkip,
+                    cfgRescale: 0,
+                    hires: { ...hires, scale: f.hires.scale, denoise: f.hires.denoise, steps: f.hires.steps },
+                })
+            },
             setSteps: (steps) => set({ steps }),
             setCfgScale: (cfgScale) => set({ cfgScale }),
             setCfgRescale: (cfgRescale) => set({ cfgRescale }),
@@ -236,23 +247,22 @@ export const useGenerationStore = create<GenerationState>()(
                 additionalPrompt: preset.additionalPrompt,
                 detailPrompt: preset.detailPrompt,
                 negativePrompt: preset.negativePrompt,
-                model: preset.model,
+                // 예전 NAIS2 프리셋의 NAI 모델 이름은 체크포인트가 아니므로 지금 체크포인트를 둔다
+                model: preset.model && !/^nai-diffusion/.test(preset.model) ? preset.model : get().model,
+                modelFamily: preset.modelFamily ?? get().modelFamily,
+                loras: preset.loras ?? get().loras,
+                clipSkip: preset.clipSkip ?? get().clipSkip,
+                hires: preset.hires ? { ...DEFAULT_HIRES, ...preset.hires } : get().hires,
                 steps: preset.steps,
                 cfgScale: preset.cfgScale,
-                cfgRescale: preset.cfgRescale,
-                sampler: preset.sampler,
-                scheduler: preset.scheduler,
-                smea: preset.smea,
-                smeaDyn: preset.smeaDyn,
-                variety: preset.variety ?? false,
+                cfgRescale: preset.cfgRescale ?? 0,
+                sampler: normalizeSampler(preset.sampler),
+                scheduler: normalizeScheduler(preset.scheduler),
                 qualityToggle: preset.qualityToggle ?? true,
                 ucPreset: preset.ucPreset ?? 0,
                 selectedResolution: preset.selectedResolution,
             }),
             setScheduler: (scheduler) => set({ scheduler }),
-            setSmea: (smea) => set({ smea }),
-            setSmeaDyn: (smeaDyn) => set({ smeaDyn }),
-            setVariety: (variety) => set({ variety }),
 
             setSeed: (seed) => set({ seed }),
             setPreviewSeed: (previewSeed) => set({ previewSeed }),
@@ -263,38 +273,25 @@ export const useGenerationStore = create<GenerationState>()(
 
             setBatchCount: (count) => set({ batchCount: count }),
 
-            setSourceImage: (img) => set({ sourceImage: img }),
-            setReferenceImage: (img) => set({ sourceImage: img }), // Alias for now
-            setStrength: (v) => set({ strength: v }),
-            setNoise: (v) => set({ noise: v }),
-            setMask: (mask) => set({ mask }),
-            setI2IMode: (mode) => set({ i2iMode: mode }),
-            resetI2IParams: () => set({ sourceImage: null, mask: null, strength: 0.7, noise: 0.0, inpaintingPrompt: '', i2iMode: null }),
-
             // Memory cleanup - release large runtime data (previewImage, sourceImage, mask)
             // Call this when leaving main mode to prevent OOM
             clearRuntimeData: () => {
                 console.log('[GenerationStore] Clearing runtime data to free memory')
-                set({ 
-                    previewImage: null, 
-                    sourceImage: null, 
-                    mask: null,
+                set({
+                    previewImage: null,
                     streamProgress: 0
                 })
             },
 
             cancelGeneration: () => {
                 const { abortController, seedLocked } = get()
+                // ComfyUI 작업도 멈춘다 (signal → /queue 삭제 + /interrupt)
                 if (abortController) {
                     abortController.abort()
                 }
-                // Generate new seed if not locked (same as successful generation)
                 const newSeed = seedLocked ? undefined : Math.floor(Math.random() * 4294967295)
-                // Keep isGenerating=true until current request completes (prevents 429 errors)
-                // The finally block in generate() will set isGenerating=false
-                set({ 
-                    isCancelled: true, 
-                    // isGenerating stays true - button remains locked until API response arrives
+                set({
+                    isCancelled: true,
                     currentBatch: 0,
                     ...(newSeed !== undefined && { seed: newSeed })
                 })
@@ -305,41 +302,32 @@ export const useGenerationStore = create<GenerationState>()(
             },
 
             generate: async () => {
-                const {
-                    basePrompt, additionalPrompt, detailPrompt, negativePrompt, inpaintingPrompt,
-                    model, steps, cfgScale, cfgRescale, sampler, scheduler, smea, smeaDyn, variety,
-                    selectedResolution, batchCount, lastGenerationTime,
-                    sourceImage, strength, noise, mask
-                } = get()
+                const { batchCount, lastGenerationTime } = get()
 
-                const token = useAuthStore.getState().token
-                const isVerified = useAuthStore.getState().isVerified
-
-                if (!token || !isVerified) {
-                    toast({
-                        title: i18n.t('toast.tokenRequired.title'),
-                        description: i18n.t('toast.tokenRequired.desc'),
-                        variant: 'destructive',
-                    })
-                    return
-                }
-
-                // Check for cross-mode conflict
-                if (get().generatingMode === 'scene') {
+                // 씬·변형 모드가 돌고 있으면 기다린다
+                const busy = get().generatingMode
+                if (busy === 'scene' || busy === 'variation') {
                     toast({
                         title: i18n.t('common.error'),
-                        description: i18n.t('generate.conflictScene', '씬 모드에서 생성 중입니다.'),
+                        description: busy === 'scene'
+                            ? i18n.t('generate.conflictScene', '씬 모드에서 생성 중입니다.')
+                            : i18n.t('generate.conflictVariation', '변형 모드에서 생성 중입니다.'),
+                        variant: 'destructive',
+                    })
+                    return
+                }
+                if (!get().model) {
+                    toast({
+                        title: i18n.t('comfy.noCheckpointTitle', '체크포인트를 고르세요'),
+                        description: i18n.t('comfy.noCheckpointDesc', '프롬프트 아래 생성 설정(톱니바퀴)에서 ComfyUI 체크포인트를 고르세요.'),
                         variant: 'destructive',
                     })
                     return
                 }
 
-                // Create new AbortController and session ID
                 const abortController = new AbortController()
                 const sessionId = Date.now()
-                
-                // MEMORY: Clear previous preview image before starting new generation
-                // This helps GC reclaim the previous base64 data (~3-5MB per image)
+
                 set({
                     isGenerating: true,
                     generatingMode: 'main',
@@ -347,311 +335,60 @@ export const useGenerationStore = create<GenerationState>()(
                     abortController,
                     generationSessionId: sessionId,
                     estimatedTime: lastGenerationTime ? lastGenerationTime * batchCount : null,
-                    previewImage: null, // Clear previous preview to free memory
-                    streamProgress: 0,  // Reset streaming progress
+                    previewImage: null,
+                    streamProgress: 0,
                 })
 
+                let completed = 0
                 try {
                     for (let i = 0; i < batchCount; i++) {
-                        // Check if cancelled or session changed (race condition protection)
-                        if (get().isCancelled || get().generationSessionId !== sessionId) {
-                            console.log('[Generate] Session invalidated, stopping batch loop')
-                            break
-                        }
+                        if (get().isCancelled || get().generationSessionId !== sessionId) break
 
                         set({ currentBatch: i + 1 })
-
                         const startTime = Date.now()
-                        
-                        // Helper to remove comment lines (lines starting with #)
-                        const removeComments = (text: string) => text
-                            .split('\n')
-                            .filter(line => !line.trimStart().startsWith('#'))
-                            .join('\n')
-                        
-                        let finalPrompt = [
-                            removeComments(basePrompt),
-                            removeComments(inpaintingPrompt),
-                            removeComments(additionalPrompt),
-                            removeComments(detailPrompt)
-                        ].filter(Boolean).join(', ')
 
-                        // Fragment Substitution - use processWildcards which handles <filename> syntax
-                        // Wildcard Processing (handles both <filename> fragments and (a/b/c) random selection) - async
-                        finalPrompt = await processWildcards(finalPrompt)
-
-                        // Get current seed for this generation
-                        // Use the current store seed, then immediately set next seed
+                        // 이번 장의 시드: 0이면 무작위. 고정하지 않았으면 바로 다음 시드로 바꿔 둔다
                         let currentSeed = get().seed
-                        if (currentSeed === 0) {
-                            currentSeed = Math.floor(Math.random() * 4294967295)
-                        }
+                        if (currentSeed === 0) currentSeed = Math.floor(Math.random() * 4294967295)
+                        if (!get().seedLocked) set({ seed: Math.floor(Math.random() * 4294967295) })
 
-                        // Immediately advance seed so UI shows next seed at generation start
-                        if (!get().seedLocked) {
-                            set({ seed: Math.floor(Math.random() * 4294967295) })
-                        }
+                        // 조각(와일드카드)은 장마다 새로 뽑는다
+                        const params = await buildGenerationParams({ seed: currentSeed })
+                        const { useStreaming } = useSettingsStore.getState()
 
-                        // Character & Vibe Data (활성화된 이미지만 필터링)
-                        // Ensure base64 data is loaded from files before generation
-                        await useCharacterStore.getState().ensureImagesLoaded()
-                        const { characterImages: allCharImages, vibeImages: allVibeImages } = useCharacterStore.getState()
-                        const characterImages = allCharImages.filter(img => img.enabled !== false && img.base64)
-                        const vibeImages = allVibeImages.filter(img => img.enabled !== false && img.base64)
-
-                        // Character Prompts (Position-based)
-                        const { characters: characterPrompts, positionEnabled } = useCharacterPromptStore.getState()
-
-                        // Apply fragment/wildcard substitution to character prompts (async)
-                        const processedCharacterPrompts = await Promise.all(
-                            characterPrompts.filter(c => c.enabled).map(async c => {
-                                const processedPrompt = await processWildcards(c.prompt)
-                                const processedNegative = await processWildcards(c.negative)
-                                return {
-                                    ...c,
-                                    prompt: processedPrompt,
-                                    negative: processedNegative
-                                }
-                            })
-                        )
-
-                        // Check if streaming is enabled and get image format
-                        const { useStreaming, imageFormat } = useSettingsStore.getState()
-
-                        // Helper function to round to nearest multiple of 64 (NovelAI requirement)
-                        const roundTo64 = (value: number): number => Math.round(value / 64) * 64
-
-                        // For I2I and Inpainting, use source image dimensions instead of global resolution
-                        let finalWidth = roundTo64(selectedResolution.width)
-                        let finalHeight = roundTo64(selectedResolution.height)
-
-                        if (sourceImage) {
-                            // Extract dimensions from base64 image
-                            try {
-                                const img = new Image()
-                                await new Promise<void>((resolve, reject) => {
-                                    img.onload = () => resolve()
-                                    img.onerror = () => reject(new Error('Failed to load source image'))
-                                    img.src = sourceImage
-                                })
-                                // Round source image dimensions to multiples of 64
-                                finalWidth = roundTo64(img.width)
-                                finalHeight = roundTo64(img.height)
-                                console.log(`[Generate] Using source image dimensions: ${img.width}x${img.height} → ${finalWidth}x${finalHeight}`)
-                                // MEMORY: Clear image reference
-                                img.src = ''
-                            } catch (e) {
-                                console.warn('[Generate] Failed to get source image dimensions, using global resolution')
-                            }
-                        }
-
-                        const generationParams = {
-                            prompt: finalPrompt,
-                            negative_prompt: removeComments(negativePrompt),
-                            model,
-                            width: finalWidth,
-                            height: finalHeight,
-                            steps,
-                            cfg_scale: cfgScale,
-                            cfg_rescale: cfgRescale,
-                            sampler,
-                            scheduler,
-                            smea,
-                            smea_dyn: smeaDyn,
-                            variety,
-                            seed: currentSeed,
-
-                            // I2I & Inpainting
-                            sourceImage: sourceImage || undefined,
-                            strength,
-                            noise,
-                            mask: mask || undefined,
-
-                            // Precise Reference (캐릭터 참조) - filter out images without base64 loaded
-                            charImages: characterImages.filter(img => img.base64).map(img => img.base64!),
-                            charStrength: characterImages.filter(img => img.base64).map(img => img.strength),
-                            charFidelity: characterImages.filter(img => img.base64).map(img => img.fidelity ?? 0.6),
-                            charReferenceType: characterImages.filter(img => img.base64).map(img => img.referenceType ?? 'character&style'),
-                            charCacheKeys: characterImages.filter(img => img.base64).map(img => img.cacheKey || null),
-
-                            // Vibe Transfer - filter out images without base64 loaded
-                            vibeImages: vibeImages.filter(img => img.base64).map(img => img.base64!),
-                            vibeInfo: vibeImages.filter(img => img.base64).map(img => img.informationExtracted),
-                            vibeStrength: vibeImages.filter(img => img.base64).map(img => img.strength),
-                            preEncodedVibes: vibeImages.filter(img => img.base64).map(img => img.encodedVibe || null),
-
-                            // Character Prompts (V4 char_captions with positions)
-                            characterPrompts: processedCharacterPrompts,
-                            characterPositionEnabled: positionEnabled,
-
-                            // Image format (PNG or WebP)
-                            imageFormat,
-
-                            // NAI UI options (Quality Tags & UC Preset)
-                            qualityToggle: get().qualityToggle,
-                            ucPreset: get().ucPreset,
-
-                            // Original prompt parts (pre-merge). Embedded into the image
-                            // as nais2-params so re-importing restores each section instead
-                            // of dumping everything into basePrompt.
-                            promptParts: {
-                                base: basePrompt,
-                                additional: additionalPrompt,
-                                detail: detailPrompt,
-                                negative: negativePrompt,
-                                inpainting: inpaintingPrompt,
-                            },
-                        }
-
-                        // Reset progress
                         set({ streamProgress: 0 })
+                        const result = await generateImage(params, {
+                            signal: abortController.signal,
+                            onQueued: (id) => set({ currentPromptId: id }),
+                            onProgress: (progress, preview) => {
+                                if (get().generationSessionId !== sessionId) return
+                                if (preview && useStreaming) set({ streamProgress: progress, previewImage: preview })
+                                else set({ streamProgress: progress })
+                            },
+                        })
+                        set({ streamProgress: 0, currentPromptId: null })
 
-                        // Use streaming or non-streaming based on settings
-                        // Streaming API supports I2I/Inpainting (same ImageGenerationRequest schema)
-                        const canUseStreaming = useStreaming
+                        if (get().isCancelled || get().generationSessionId !== sessionId || result.interrupted) break
 
-                        let result
-                        const streamMimeType = imageFormat === 'webp' ? 'image/webp' : 'image/png'
-                        if (canUseStreaming) {
-                            console.log('[Generate] Using streaming API...')
-                            result = await generateImageStream(token, generationParams, (progress, partialImage) => {
-                                // Update preview image directly (no null clearing - causes flicker)
-                                if (partialImage) {
-                                    set({ streamProgress: progress, previewImage: `data:${streamMimeType};base64,${partialImage}` })
-                                } else {
-                                    set({ streamProgress: progress })
-                                }
-                            })
-                            set({ streamProgress: 0 })
-                        } else {
-                            console.log('[Generate] Using standard API...')
-                            result = await generateImage(token, generationParams)
-                        }
-
-                        // Check if cancelled or session changed after API call
-                        if (get().isCancelled || get().generationSessionId !== sessionId) {
-                            console.log('[Generate] Session invalidated after API call, discarding result')
-                            break
-                        }
-
-                        const generationTime = Date.now() - startTime
-                        set({ lastGenerationTime: generationTime })
+                        set({ lastGenerationTime: Date.now() - startTime })
 
                         if (result.success && result.imageData) {
-                            const mimeType = imageFormat === 'webp' ? 'image/webp' : 'image/png'
-                            const imageUrl = `data:${mimeType};base64,${result.imageData}`
+                            const imageUrl = `data:image/png;base64,${result.imageData}`
                             set({ previewImage: imageUrl })
 
-                            // Cache newly encoded vibes back to character store for reuse
-                            if (result.encodedVibes && result.encodedVibes.length > 0) {
-                                const { vibeImages, updateVibeImage } = useCharacterStore.getState()
-                                let encodedIndex = 0
-                                for (let vi = 0; vi < vibeImages.length && encodedIndex < result.encodedVibes.length; vi++) {
-                                    // Only update vibes that didn't have encoding before
-                                    if (!vibeImages[vi].encodedVibe) {
-                                        updateVibeImage(vibeImages[vi].id, { encodedVibe: result.encodedVibes[encodedIndex] })
-                                        encodedIndex++
-                                    }
-                                }
-                            }
-
-                            // Create thumbnail for history (reduces memory from ~3MB to ~20KB per image)
                             const thumbnail = await createThumbnail(imageUrl)
-
                             const historyItem: HistoryItem = {
                                 id: Date.now().toString(),
-                                url: thumbnail, // Store thumbnail instead of full image
-                                prompt: finalPrompt,
-                                seed: currentSeed,
+                                url: thumbnail,
+                                prompt: params.prompt,
+                                seed: result.seed,
                                 timestamp: new Date(),
                             }
+                            // 저장 + 오른쪽 기록 패널에 알림 (자동 저장을 끄면 기록 패널에만)
+                            await saveOutputImage(result.bytes ?? result.imageData, { kind: 'main' })
+                            set(state => ({ history: [historyItem, ...state.history].slice(0, 20) }))
+                            completed++
 
-                            // Save Image: Try Tauri FS first, fallback to browser
-                            const { savePath, autoSave, useAbsolutePath } = useSettingsStore.getState()
-
-                            if (autoSave) {
-                                try {
-                                    const binaryString = atob(result.imageData)
-                                    const bytes = new Uint8Array(binaryString.length)
-                                    for (let j = 0; j < binaryString.length; j++) {
-                                        bytes[j] = binaryString.charCodeAt(j)
-                                    }
-
-                                    // Determine generation type prefix
-                                    let typePrefix = ''
-                                    if (mask) {
-                                        typePrefix = 'INPAINT_'
-                                    } else if (sourceImage) {
-                                        typePrefix = 'I2I_'
-                                    }
-                                    const fileExt = imageFormat === 'webp' ? 'webp' : 'png'
-                                    const fileName = `NAIS_${typePrefix}${Date.now()}.${fileExt}`
-                                    const outputDir = savePath || 'NAIS_Output'
-
-                                    let fullPath: string
-
-                                    if (useAbsolutePath) {
-                                        // Save to absolute path directly
-                                        const dirExists = await exists(outputDir)
-                                        if (!dirExists) {
-                                            await mkdir(outputDir, { recursive: true })
-                                        }
-                                        fullPath = await join(outputDir, fileName)
-                                        await writeFile(fullPath, bytes)
-                                    } else {
-                                        // Save relative to Pictures directory
-                                        const dirExists = await exists(outputDir, { baseDir: BaseDirectory.Picture })
-                                        if (!dirExists) {
-                                            await mkdir(outputDir, { baseDir: BaseDirectory.Picture })
-                                        }
-                                        await writeFile(`${outputDir}/${fileName}`, bytes, { baseDir: BaseDirectory.Picture })
-                                        const picPath = await pictureDir()
-                                        fullPath = await join(picPath, outputDir, fileName)
-                                    }
-
-                                    // Notify HistoryPanel (file path only — HistoryPanel uses
-                                    // convertFileSrc for file-based images, no base64 needed)
-                                    try {
-                                        window.dispatchEvent(new CustomEvent('newImageGenerated', {
-                                            detail: { path: fullPath }
-                                        }))
-                                    } catch (e) {
-                                        console.warn('Failed to dispatch newImageGenerated event:', e)
-                                    }
-                                } catch (e) {
-                                    console.warn('Tauri FS save failed, using download fallback:', e)
-                                    const link = document.createElement('a')
-                                    link.href = imageUrl
-                                    const fallbackExt = imageFormat === 'webp' ? 'webp' : 'png'
-                                    link.download = `NAIS_${Date.now()}.${fallbackExt}`
-                                    document.body.appendChild(link)
-                                    link.click()
-                                    document.body.removeChild(link)
-                                }
-                            } else {
-                                // Auto-save is OFF: Still notify HistoryPanel with memory-based path
-                                // This allows viewing the generated image in history without saving to disk
-                                try {
-                                    const memExt = imageFormat === 'webp' ? 'webp' : 'png'
-                                    const memoryPath = `memory://NAIS_${Date.now()}.${memExt}`
-                                    window.dispatchEvent(new CustomEvent('newImageGenerated', {
-                                        detail: { path: memoryPath, data: imageUrl }
-                                    }))
-                                } catch (e) {
-                                    console.warn('Failed to dispatch newImageGenerated event:', e)
-                                }
-                            }
-
-                            set(state => ({
-                                history: [historyItem, ...state.history].slice(0, 20)
-                            }))
-
-                            // Refresh Anlas balance
-                            useAuthStore.getState().refreshAnlas()
-
-                            // Seed already advanced at generation start
-
-                            // Apply generation delay between batches (not after the last one)
                             const { generationDelay } = useSettingsStore.getState()
                             if (i < batchCount - 1 && generationDelay > 0) {
                                 await new Promise(resolve => setTimeout(resolve, generationDelay))
@@ -666,15 +403,13 @@ export const useGenerationStore = create<GenerationState>()(
                         }
                     }
 
-                    // Show completion toast for batch
-                    if (!get().isCancelled && batchCount > 1) {
+                    if (!get().isCancelled && batchCount > 1 && completed === batchCount) {
                         toast({
                             title: i18n.t('toast.batchComplete.title'),
                             description: i18n.t('toast.batchComplete.desc', { count: batchCount }),
                             variant: 'success',
                         })
                     }
-
                 } catch (error) {
                     if (get().isCancelled) {
                         return
@@ -682,14 +417,13 @@ export const useGenerationStore = create<GenerationState>()(
                     console.error('Generation failed:', error)
                     toast({
                         title: i18n.t('toast.errorOccurred.title'),
-                        description: i18n.t('toast.errorOccurred.desc'),
+                        description: (error as Error)?.message || i18n.t('toast.errorOccurred.desc'),
                         variant: 'destructive',
                     })
                 } finally {
-                    set({ isGenerating: false, generatingMode: null, currentBatch: 0, abortController: null })
-                    // Release character/vibe base64 from memory after generation (~30-60MB)
-                    // They will be reloaded from files on next generation
-                    useCharacterStore.getState().releaseImageData()
+                    if (get().generationSessionId === sessionId) {
+                        set({ isGenerating: false, generatingMode: null, currentBatch: 0, abortController: null, currentPromptId: null })
+                    }
                 }
             },
 
@@ -702,6 +436,7 @@ export const useGenerationStore = create<GenerationState>()(
             setPreviewImage: (url) => set({ previewImage: url }),
             setIsGenerating: (v) => set({ isGenerating: v, generatingMode: v ? 'main' : null }),
             setGeneratingMode: (mode) => set({ generatingMode: mode }),
+            setCurrentPromptId: (currentPromptId) => set({ currentPromptId }),
             setStreamProgress: (progress) => set({ streamProgress: progress }),
         }),
         {
@@ -715,14 +450,15 @@ export const useGenerationStore = create<GenerationState>()(
                 negativePrompt: state.negativePrompt,
                 // Model & Parameters
                 model: state.model,
+                modelFamily: state.modelFamily,
+                loras: state.loras,
+                clipSkip: state.clipSkip,
+                hires: state.hires,
                 steps: state.steps,
                 cfgScale: state.cfgScale,
                 cfgRescale: state.cfgRescale,
                 sampler: state.sampler,
                 scheduler: state.scheduler,
-                smea: state.smea,
-                smeaDyn: state.smeaDyn,
-                variety: state.variety,
                 qualityToggle: state.qualityToggle,
                 ucPreset: state.ucPreset,
                 // Seed - only save if locked
@@ -733,12 +469,6 @@ export const useGenerationStore = create<GenerationState>()(
                 batchCount: state.batchCount,
                 // Timing (for estimated time)
                 lastGenerationTime: state.lastGenerationTime,
-                // I2I & Inpainting state - DO NOT persist sourceImage/mask (large Base64 data, 1MB+ each)
-                // Only persist lightweight settings
-                i2iMode: state.i2iMode,
-                strength: state.strength,
-                noise: state.noise,
-                inpaintingPrompt: state.inpaintingPrompt,
                 // History - limit to 20 items to prevent memory issues
                 history: state.history.slice(0, 20),
             }),
@@ -753,6 +483,12 @@ export const useGenerationStore = create<GenerationState>()(
                     state.history = state.history.slice(0, 20)
                 }
                 if (state) {
+                    // 예전 NAIS2(NAI) 값이 남아 있으면 ComfyUI 이름으로 바꾼다
+                    state.sampler = normalizeSampler(state.sampler)
+                    state.scheduler = normalizeScheduler(state.scheduler)
+                    if (/^nai-diffusion/.test(state.model ?? '')) state.model = ''
+                    state.hires = { ...DEFAULT_HIRES, ...(state.hires ?? {}) }
+                    state.loras = Array.isArray(state.loras) ? state.loras : []
                     console.log('[GenerationStore] Hydrated successfully')
                 }
             },

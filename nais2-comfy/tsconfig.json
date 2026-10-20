@@ -41,8 +41,47 @@
             ],
             "@/types/*": [
                 "./src/types/*"
+            ],
+            "@tauri-apps/api/core": [
+                "./src/shims/core.ts"
+            ],
+            "@tauri-apps/api/path": [
+                "./src/shims/path.ts"
+            ],
+            "@tauri-apps/api/window": [
+                "./src/shims/window.ts"
+            ],
+            "@tauri-apps/api/app": [
+                "./src/shims/app.ts"
+            ],
+            "@tauri-apps/plugin-fs": [
+                "./src/shims/fs.ts"
+            ],
+            "@tauri-apps/plugin-dialog": [
+                "./src/shims/dialog.ts"
+            ],
+            "@tauri-apps/plugin-shell": [
+                "./src/shims/shell.ts"
+            ],
+            "@tauri-apps/plugin-opener": [
+                "./src/shims/opener.ts"
+            ],
+            "@tauri-apps/plugin-process": [
+                "./src/shims/process.ts"
+            ],
+            "@tauri-apps/plugin-updater": [
+                "./src/shims/updater.ts"
+            ],
+            "@tauri-apps/plugin-deep-link": [
+                "./src/shims/deep-link.ts"
+            ],
+            "@tauri-apps/plugin-store": [
+                "./src/shims/store.ts"
             ]
-        }
+        },
+        "types": [
+            "vite/client"
+        ]
     },
     "include": [
         "src"

@@ -36,8 +36,23 @@ interface SettingsState {
     libraryPath: string
     useAbsoluteLibraryPath: boolean
 
-    // Image format setting
+    // Image format setting (ComfyUI 결과는 PNG라 png로 고정)
     imageFormat: 'png' | 'webp'
+
+    // ComfyUI
+    /** NAI 문법({}, [], 1.2::태그::)을 ComfyUI 문법으로 바꿔 보낸다 */
+    naiSyntax: boolean
+    /** preview: ComfyUI 임시 폴더만 거친다 / save: ComfyUI output 폴더에도 남긴다 */
+    comfyOutput: 'preview' | 'save'
+    /** 비우면 체크포인트 계열 권장 품질 태그 */
+    qualityTagsCustom: string
+    /** 비우면 체크포인트 계열 권장 부정 프롬프트 */
+    negativePresetCustom: string
+    /** 고화질로 다시 그리기 기본값 */
+    upscaleScale: number
+    upscaleDenoise: number
+    upscaleMethod: 'pixel' | 'model'
+    upscaleModel: string
 
     // Actions
     setSavePath: (path: string, useAbsolute?: boolean) => void
@@ -54,6 +69,11 @@ interface SettingsState {
     setGeminiApiKey: (key: string) => void
     setLibraryPath: (path: string, useAbsolute?: boolean) => void
     setImageFormat: (format: 'png' | 'webp') => void
+    setNaiSyntax: (v: boolean) => void
+    setComfyOutput: (v: 'preview' | 'save') => void
+    setQualityTagsCustom: (v: string) => void
+    setNegativePresetCustom: (v: string) => void
+    setUpscaleDefaults: (v: Partial<{ upscaleScale: number; upscaleDenoise: number; upscaleMethod: 'pixel' | 'model'; upscaleModel: string }>) => void
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -69,11 +89,19 @@ export const useSettingsStore = create<SettingsState>()(
             detailPromptCollapsed: false, // Default: expanded
             negativePromptCollapsed: false, // Default: expanded
             useStreaming: true, // Default: enabled
-            generationDelay: 500, // Default: 500ms delay between batch generations
+            generationDelay: 0, // 로컬 ComfyUI라 기다릴 필요가 없다
             geminiApiKey: '', // Default: empty
             libraryPath: 'NAIS_Library', // Default: relative to Pictures folder
             useAbsoluteLibraryPath: false, // Default: relative to Pictures folder
             imageFormat: 'png', // Default: PNG format
+            naiSyntax: true,
+            comfyOutput: 'preview',
+            qualityTagsCustom: '',
+            negativePresetCustom: '',
+            upscaleScale: 1.5,
+            upscaleDenoise: 0.4,
+            upscaleMethod: 'pixel',
+            upscaleModel: '',
 
             setSavePath: (savePath, useAbsolute) => set({
                 savePath,
@@ -103,11 +131,26 @@ export const useSettingsStore = create<SettingsState>()(
                 libraryPath,
                 useAbsoluteLibraryPath: useAbsolute ?? false
             }),
-            setImageFormat: (format) => set({ imageFormat: format }),
+            setImageFormat: () => set({ imageFormat: 'png' }),
+            setNaiSyntax: (naiSyntax) => set({ naiSyntax }),
+            setComfyOutput: (comfyOutput) => set({ comfyOutput }),
+            setQualityTagsCustom: (qualityTagsCustom) => set({ qualityTagsCustom }),
+            setNegativePresetCustom: (negativePresetCustom) => set({ negativePresetCustom }),
+            setUpscaleDefaults: (v) => set(v),
         }),
         {
             name: 'nais2-settings',
             storage: createJSONStorage(() => indexedDBStorage),
+            version: 1,
+            migrate: (persisted, version) => {
+                const s = (persisted ?? {}) as Record<string, unknown>
+                // NAIS2 원본 설정에서 넘어온 값: NAI용 대기 시간과 webp는 로컬 ComfyUI에 맞게 바꾼다
+                if (version < 1) {
+                    s.generationDelay = 0
+                    s.imageFormat = 'png'
+                }
+                return s as unknown as SettingsState
+            },
             onRehydrateStorage: () => (state, error) => {
                 if (error) {
                     console.error('[SettingsStore] Hydration failed:', error)
