@@ -4,7 +4,9 @@ import App from './App.tsx'
 import './styles/globals.css'
 import './i18n'
 import { cleanupLargeData, migrateFromLocalStorage, migrateIndexedDBKeys, ensureDbReady, isDbInitFailed, indexedDBStorage, exportAllData } from './lib/indexed-db'
-import { useCharacterStore } from './stores/character-store'
+import { connectLauncher } from './lib/launcher-link'
+import { useComfyStore } from './stores/comfy-store'
+import { pingComfy } from './services/comfy/client'
 
 // 자동 백업 상수
 const AUTO_BACKUP_KEY = 'nais2-auto-backup'
@@ -170,9 +172,87 @@ async function checkDataIntegrity(): Promise<boolean> {
     }
 }
 
+// ---------------------------------------------------------------------------
+// ComfyUI 연결 확인
+//   - 시작할 때: exe에 저장된 ComfyUI 주소를 읽고, 연결 확인 + 목록(체크포인트·LoRA…)을 받는다.
+//   - 꺼져 있으면 15초마다, 연결돼 있으면 60초마다 다시 확인한다.
+//     (연결된 동안에는 가벼운 상태 확인만 한다. 목록(/object_info)은 커서 매번 받지 않는다)
+//   - 앱 창으로 돌아오면(focus) 목록까지 다시 받는다 (그사이 모델 파일을 넣었을 수 있으므로).
+const COMFY_RECHECK_OFFLINE_MS = 15_000
+const COMFY_RECHECK_ONLINE_MS = 60_000
+const COMFY_FOCUS_MIN_GAP_MS = 10_000
+
+let comfyWatchStarted = false
+
+function startComfyWatch() {
+    if (comfyWatchStarted) return
+    comfyWatchStarted = true
+
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let running = false
+    let lastFullRefresh = 0
+
+    const schedule = () => {
+        if (timer) clearTimeout(timer)
+        const online = useComfyStore.getState().status === 'online'
+        timer = setTimeout(() => { void check(false) }, online ? COMFY_RECHECK_ONLINE_MS : COMFY_RECHECK_OFFLINE_MS)
+    }
+
+    const fullRefresh = async () => {
+        lastFullRefresh = Date.now()
+        await useComfyStore.getState().refresh()
+    }
+
+    const check = async (full: boolean) => {
+        const state = useComfyStore.getState()
+        // 다른 곳(설정 화면의 '연결 확인' 등)에서 이미 확인 중이면 끝난 뒤로 미룬다
+        if (running || state.status === 'checking') {
+            schedule()
+            return
+        }
+        running = true
+        try {
+            if (full || state.status !== 'online') {
+                await fullRefresh()
+            } else {
+                const st = await pingComfy()
+                // 꺼졌으면 스토어가 상태와 오류 문구를 정리하도록 다시 확인을 맡긴다
+                if (!st.ok) await fullRefresh()
+            }
+        } catch (err) {
+            console.warn('[Comfy] Status check failed:', err)
+        } finally {
+            running = false
+            schedule()
+        }
+    }
+
+    // 다른 곳에서 확인해 상태가 바뀌면 다음 확인 시각을 그 상태에 맞춘다
+    useComfyStore.subscribe((s, prev) => {
+        if (s.status !== prev.status && (s.status === 'online' || s.status === 'offline') && !running) schedule()
+    })
+
+    window.addEventListener('focus', () => {
+        if (Date.now() - lastFullRefresh < COMFY_FOCUS_MIN_GAP_MS) return
+        void check(true)
+    })
+
+    void (async () => {
+        try {
+            await useComfyStore.getState().loadUrl()
+        } catch (err) {
+            console.warn('[Comfy] Could not read the saved ComfyUI address:', err)
+        }
+        await check(true)
+    })()
+}
+
 // Start app only after migrations complete
 async function startApp() {
     console.log('[Startup] Starting app initialization...')
+
+    // exe(launcher)와 연결 유지 (창을 닫으면 exe도 끝난다)
+    connectLauncher()
     
     // CRITICAL: Ensure IndexedDB is ready before any migration
     const dbReady = await ensureDbReady()
@@ -191,8 +271,6 @@ async function startApp() {
         try {
             await migrateIndexedDBKeys([
                 ['nais-library-storage', 'nais2-library'],  // Library items (was already IndexedDB)
-                ['tools-storage', 'nais2-tools'],           // Tools settings
-                ['nais-update', 'nais2-update'],            // Update state
             ])
             console.log('[Startup] IndexedDB key migration complete')
         } catch (err) {
@@ -204,19 +282,17 @@ async function startApp() {
         try {
             await migrateFromLocalStorage([
                 'nais2-generation',        // Main mode prompts & settings (CRITICAL!)
-                'nais2-character-store',   // Character/Vibe images
                 'nais2-character-prompts', // Character prompt presets (CRITICAL - 100+ presets)
                 'nais2-presets',           // Generation presets
                 'nais2-settings',          // App settings
-                'nais2-auth',              // Auth tokens
                 'nais2-scenes',            // Scene mode data (CRITICAL)
                 'nais2-shortcuts',         // Keyboard shortcuts
                 'nais2-theme',             // Theme settings
                 'nais2-wildcards',         // Wildcard/Fragment data
                 'nais2-layout',            // Layout preferences
                 'nais2-library',           // Library items
-                'nais2-tools',             // Tools settings (brush size, etc.)
-                'nais2-update',            // Update state
+                // (NAI 로그인·캐릭터 참조·스마트 툴·업데이트 저장소는 기능과 함께 없어졌다.
+                //  'nais2-comfy'는 localStorage에 그대로 두는 저장소라 여기에 넣지 않는다)
             ])
             console.log('[Startup] LocalStorage migration complete')
         } catch (err) {
@@ -252,16 +328,8 @@ async function startApp() {
         </React.StrictMode>,
     )
 
-    // Load reference images from files after React mounts
-    // This is non-blocking and runs after the app is visible
-    setTimeout(async () => {
-        try {
-            await useCharacterStore.getState().ensureImagesLoaded()
-            console.log('[Startup] Reference images loaded from files')
-        } catch (err) {
-            console.error('[Startup] Failed to load reference images:', err)
-        }
-    }, 100)
+    // ComfyUI 연결 확인 (처음 한 번 + 주기적으로)
+    startComfyWatch()
 
     // Delay slightly to ensure app renders, then hide splash
     requestAnimationFrame(() => {

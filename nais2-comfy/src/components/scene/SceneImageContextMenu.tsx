@@ -5,53 +5,42 @@ import {
     ContextMenuTrigger,
     ContextMenuSeparator,
 } from '@/components/ui/context-menu'
-import { Copy, FolderOpen, Save, Trash2, Wand2, Users, FileSearch, Paintbrush, Image as ImageIcon } from 'lucide-react'
+import { Copy, FolderOpen, Save, Trash2, FileSearch, Maximize2, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/components/ui/use-toast'
 import { save } from '@tauri-apps/plugin-dialog'
 import { writeFile, remove, readFile } from '@tauri-apps/plugin-fs'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
-import { useNavigate } from 'react-router-dom'
-import { useToolsStore } from '@/stores/tools-store'
-import { useGenerationStore } from '@/stores/generation-store'
-import { useSettingsStore } from '@/stores/settings-store'
+import { copyImageToClipboard, imageExtension, withImageExtension } from '@/lib/image-utils'
 import { SceneImage } from '@/stores/scene-store'
 
 interface SceneContextMenuProps {
     image: SceneImage
     children: React.ReactNode
     onDelete: () => void
-    onAddRef?: () => void
     onLoadMetadata?: () => void
-    onInpaint?: (base64: string) => void
+    /** 고화질로 다시 그리기 (씬 폴더에 새 파일로 저장하고 즐겨찾기를 넘겨받는다) */
+    onUpscale?: () => void
+    /** 이 그림을 지금 고화질로 다시 그리는 중 */
+    upscaling?: boolean
 }
 
-export function SceneImageContextMenu({ image, children, onDelete, onAddRef, onLoadMetadata, onInpaint }: SceneContextMenuProps) {
+export function SceneImageContextMenu({ image, children, onDelete, onLoadMetadata, onUpscale, upscaling }: SceneContextMenuProps) {
     const { t } = useTranslation()
-    const navigate = useNavigate()
-    const { setActiveImage } = useToolsStore()
-    const { setSourceImage, setI2IMode } = useGenerationStore()
 
-    // Determine file path. 
-    // image.url is expected to be the full file path for saved images.
-    // If it's data: URI, some features like Open Folder won't work well, but logic below handles standard paths.
+    // image.url 은 보통 저장된 파일 경로다. 예전 데이터는 data: URL 일 수도 있다.
     const isFile = !image.url.startsWith('data:')
+    const fileName = isFile ? (image.url.split(/[\\/]/).pop() || `NAIS_${image.timestamp}.png`) : `NAIS_${image.timestamp}.png`
+
+    const readBytes = async (): Promise<Uint8Array> => {
+        if (isFile) return readFile(image.url)
+        const res = await fetch(image.url)
+        return new Uint8Array(await res.arrayBuffer())
+    }
 
     const handleCopy = async () => {
         try {
-            let blob: Blob
-            if (isFile) {
-                const data = await readFile(image.url)
-                blob = new Blob([data], { type: 'image/png' })
-            } else {
-                // Handle Base64 (Streaming/Preview)
-                const res = await fetch(image.url)
-                blob = await res.blob()
-            }
-
-            await navigator.clipboard.write([
-                new ClipboardItem({ [blob.type]: blob })
-            ])
+            await copyImageToClipboard(await readBytes(), fileName)
             toast({ title: t('actions.copied', '복사 완료'), variant: 'success' })
         } catch (e) {
             console.error('Copy failed:', e)
@@ -61,52 +50,19 @@ export function SceneImageContextMenu({ image, children, onDelete, onAddRef, onL
 
     const handleSaveAs = async () => {
         try {
-            let data: Uint8Array
-            if (isFile) {
-                data = await readFile(image.url)
-            } else {
-                const res = await fetch(image.url)
-                const buffer = await res.arrayBuffer()
-                data = new Uint8Array(buffer)
-            }
-
-            const { imageFormat } = useSettingsStore.getState()
-            const fileExt = imageFormat === 'webp' ? 'webp' : 'png'
+            const data = await readBytes()
+            const ext = imageExtension(fileName)
             const filePath = await save({
-                defaultPath: `NAIS_${image.timestamp}.${fileExt}`,
-                filters: [{ name: 'Image', extensions: ['png', 'jpg', 'webp'] }],
+                defaultPath: fileName,
+                filters: [{ name: 'Image', extensions: [ext] }],
             })
             if (filePath) {
-                await writeFile(filePath, data)
+                await writeFile(withImageExtension(filePath, ext), data)
                 toast({ title: t('toast.saved', '저장 완료'), variant: 'success' })
             }
         } catch (e) {
             console.error('Save failed:', e)
             toast({ title: t('toast.saveFailed', '저장 실패'), variant: 'destructive' })
-        }
-    }
-
-    const handleSmartTools = async () => {
-        try {
-            let base64 = ''
-            if (isFile) {
-                const data = await readFile(image.url)
-                // Convert to base64
-                let binary = ''
-                const len = data.byteLength
-                for (let i = 0; i < len; i++) {
-                    binary += String.fromCharCode(data[i])
-                }
-                base64 = btoa(binary)
-            } else {
-                base64 = image.url.split(',')[1]
-            }
-
-            setActiveImage(`data:image/png;base64,${base64}`)
-            navigate('/tools')
-        } catch (e) {
-            console.error('Failed to load for tools:', e)
-            toast({ title: t('smartTools.error', '이미지 로드 실패'), variant: 'destructive' })
         }
     }
 
@@ -117,43 +73,6 @@ export function SceneImageContextMenu({ image, children, onDelete, onAddRef, onL
         } catch (e) {
             console.error('Failed to open folder:', e)
         }
-    }
-
-    // Helper to get base64 data
-    const getImageBase64 = async (): Promise<string | null> => {
-        try {
-            if (isFile) {
-                const data = await readFile(image.url)
-                let binary = ''
-                const len = data.byteLength
-                for (let i = 0; i < len; i++) {
-                    binary += String.fromCharCode(data[i])
-                }
-                return `data:image/png;base64,${btoa(binary)}`
-            } else {
-                return image.url
-            }
-        } catch (e) {
-            console.error('Failed to get image data:', e)
-            return null
-        }
-    }
-
-    // Inpainting: Call parent callback with base64 data
-    const handleInpaint = async () => {
-        if (!onInpaint) return
-        const base64 = await getImageBase64()
-        if (!base64) return
-        onInpaint(base64)
-    }
-
-    const handleI2I = async () => {
-        const base64 = await getImageBase64()
-        if (!base64) return
-        
-        setSourceImage(base64)
-        setI2IMode('i2i')
-        navigate('/')
     }
 
     const handleDelete = async () => {
@@ -183,26 +102,28 @@ export function SceneImageContextMenu({ image, children, onDelete, onAddRef, onL
                     <Copy className="h-4 w-4 mr-2" />
                     {t('actions.copy', '복사')}
                 </ContextMenuItem>
-                <ContextMenuItem onClick={handleSmartTools}>
-                    <Wand2 className="h-4 w-4 mr-2" />
-                    {t('smartTools.title', '스마트 툴')}
-                </ContextMenuItem>
-                <ContextMenuSeparator />
-                <ContextMenuItem onClick={handleInpaint} disabled={!onInpaint}>
-                    <Paintbrush className="h-4 w-4 mr-2" />
-                    {t('tools.inpainting.title', '인페인팅')}
-                </ContextMenuItem>
-                <ContextMenuItem onClick={handleI2I}>
-                    <ImageIcon className="h-4 w-4 mr-2" />
-                    {t('tools.i2i.title', 'Image to Image')}
-                </ContextMenuItem>
                 <ContextMenuSeparator />
 
-                {onAddRef && (
-                    <ContextMenuItem onClick={onAddRef}>
-                        <Users className="h-4 w-4 mr-2" />
-                        {t('actions.addAsRef', '이미지 참조')}
-                    </ContextMenuItem>
+                {/* 스마트 툴·인페인팅·I2I 자리: 고화질로 다시 그리기 (시드 없이 그림 자체에서 시작) */}
+                {onUpscale && (
+                    <>
+                        <ContextMenuItem onClick={onUpscale} disabled={upscaling} className="items-start">
+                            {upscaling
+                                ? <Loader2 className="h-4 w-4 mr-2 mt-0.5 animate-spin" />
+                                : <Maximize2 className="h-4 w-4 mr-2 mt-0.5" />}
+                            <span className="flex flex-col">
+                                <span>
+                                    {upscaling
+                                        ? t('comfy.upscale.running', '고화질로 다시 그리는 중…')
+                                        : t('comfy.upscale.action', '고화질로 다시 그리기')}
+                                </span>
+                                <span className="text-[10px] leading-tight text-muted-foreground">
+                                    {t('comfy.scene.upscaleMenuHint', '시드 없이 이 그림에서 시작 · 고화질 그림이 즐겨찾기를 이어받음')}
+                                </span>
+                            </span>
+                        </ContextMenuItem>
+                        <ContextMenuSeparator />
+                    </>
                 )}
 
                 {onLoadMetadata && (
@@ -215,7 +136,7 @@ export function SceneImageContextMenu({ image, children, onDelete, onAddRef, onL
                 {isFile && (
                     <ContextMenuItem onClick={handleOpenFolder}>
                         <FolderOpen className="h-4 w-4 mr-2" />
-                        {t('actions.openFolder', '탐색기에서 열기')}
+                        {t('comfy.scene.revealImage', '탐색기에서 이 그림 보기')}
                     </ContextMenuItem>
                 )}
 

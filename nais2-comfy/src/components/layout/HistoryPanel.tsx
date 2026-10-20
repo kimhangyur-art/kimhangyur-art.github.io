@@ -1,24 +1,22 @@
 import { useTranslation } from 'react-i18next'
 import { useEffect, useState, useCallback, memo } from 'react'
-import { Clock, Trash2, FolderOpen, RefreshCw, FileSearch, Copy, RotateCcw, Save, Users, Image as ImageIcon, Paintbrush, Maximize2, Film, Zap, PenTool, Pencil, Droplets, Smile, Sparkles } from 'lucide-react'
+import { Clock, Trash2, FolderOpen, RefreshCw, FileSearch, Copy, RotateCcw, Save, Image as ImageIcon, Paintbrush, Maximize2, Film, Zap, PenTool, Pencil, Droplets, Smile, Sparkles, Shuffle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useGenerationStore } from '@/stores/generation-store'
-import { useAuthStore } from '@/stores/auth-store'
 import { useSettingsStore } from '@/stores/settings-store'
-import { readDir, readFile, remove, writeFile, mkdir, exists, BaseDirectory } from '@tauri-apps/plugin-fs'
+import { readDir, readFile, remove, writeFile, exists } from '@tauri-apps/plugin-fs'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { pictureDir, join } from '@tauri-apps/api/path'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { save } from '@tauri-apps/plugin-dialog'
 import { MetadataDialog } from '@/components/metadata/MetadataDialog'
-import { ImageReferenceDialog } from '@/components/metadata/ImageReferenceDialog'
 import { parseMetadataFromBase64 } from '@/lib/metadata-parser'
-import { generateImage } from '@/services/novelai-api'
+import { regenerateFromImage, upscaleExisting } from '@/lib/comfy-params'
+import { bytesToBase64 } from '@/lib/output-save'
+import { copyImageToClipboard, imageExtension, imageMimeType, withImageExtension } from '@/lib/image-utils'
 import { toast } from '@/components/ui/use-toast'
-import { useToolsStore } from '@/stores/tools-store'
 import { useLibraryStore } from '@/stores/library-store'
 import { useNavigate } from 'react-router-dom'
-import { Wand2 } from 'lucide-react'
 import {
     ContextMenu,
     ContextMenuContent,
@@ -26,24 +24,41 @@ import {
     ContextMenuTrigger,
     ContextMenuSeparator,
 } from '@/components/ui/context-menu'
-import { InpaintingDialog } from '@/components/tools/InpaintingDialog'
-
-// Convert ArrayBuffer to base64 without stack overflow
-const arrayBufferToBase64 = (buffer: Uint8Array): string => {
-    let binary = ''
-    const len = buffer.byteLength
-    for (let i = 0; i < len; i++) {
-        binary += String.fromCharCode(buffer[i])
-    }
-    return btoa(binary)
-}
 
 interface SavedImage {
     name: string
     path: string
     timestamp: number
-    type: 'main' | 'i2i' | 'inpaint' | 'upscale' | 'scene' | 'lineart' | 'sketch' | 'colorize' | 'emotion' | 'declutter'
+    // i2i·inpaint·lineart 등은 예전 NAIS2(NovelAI)로 만든 파일 표시용
+    type: 'main' | 'upscale' | 'scene' | 'variation' | 'i2i' | 'inpaint' | 'lineart' | 'sketch' | 'colorize' | 'emotion' | 'declutter'
     isTemporary?: boolean
+}
+
+type BusyKind = 'regenerate' | 'upscale'
+
+const IMAGE_FILE = /\.(png|jpe?g|webp)$/i
+
+/** 파일 이름·폴더로 어떤 그림인지 정한다 */
+function classifyImage(name: string, path: string): SavedImage['type'] {
+    const n = name.toUpperCase()
+    if (n.startsWith('NAIS_VAR_')) return 'variation'
+    if (n.includes('UPSCALE_') || n.includes('SCENE_HQ_')) return 'upscale'
+    if (/[\\/]NAIS_Variation[\\/]/i.test(path)) return 'variation'
+    if (n.includes('SCENE_') || /[\\/]NAIS_Scene[\\/]/i.test(path)) return 'scene'
+    if (n.includes('INPAINT_')) return 'inpaint'
+    if (n.includes('I2I_')) return 'i2i'
+    if (n.includes('LINEART_')) return 'lineart'
+    if (n.includes('SKETCH_')) return 'sketch'
+    if (n.includes('COLORIZE_')) return 'colorize'
+    if (n.includes('EMOTION_')) return 'emotion'
+    if (n.includes('DECLUTTER_')) return 'declutter'
+    return 'main'
+}
+
+/** 파일 이름 끝의 _<숫자> 가 만든 시각 */
+function timestampOf(name: string): number {
+    const match = name.match(/_(\d+)\.[^.]+$/)
+    return match ? parseInt(match[1]) : 0
 }
 
 // Memoized HistoryImageItem - 불필요한 리렌더링 방지
@@ -51,25 +66,23 @@ interface HistoryImageItemProps {
     image: SavedImage
     thumbnail?: string
     index: number
+    busy?: BusyKind
     getTypeIcon: (type: SavedImage['type']) => React.ReactNode
     onImageClick: (image: SavedImage) => void
     onDelete: (image: SavedImage, e?: React.MouseEvent) => void
     onSaveAs: (image: SavedImage) => void
     onCopy: (image: SavedImage) => void
     onRegenerate: (image: SavedImage) => void
-    onOpenSmartTools: (image: SavedImage) => void
-    onAddAsReference: (image: SavedImage) => void
-    onInpaint: (image: SavedImage) => void
-    onI2I: (image: SavedImage) => void
+    onUpscale: (image: SavedImage) => void
     onOpenFolder: (image: SavedImage) => void
     onLoadMetadata: (image: SavedImage) => void
     onLoadComplete: (path: string, data: string) => void
 }
 
 const HistoryImageItem = memo(function HistoryImageItem({
-    image, thumbnail, index, getTypeIcon,
-    onImageClick, onDelete, onSaveAs, onCopy, onRegenerate,
-    onOpenSmartTools, onAddAsReference, onInpaint, onI2I, onOpenFolder, onLoadMetadata,
+    image, thumbnail, index, busy, getTypeIcon,
+    onImageClick, onDelete, onSaveAs, onCopy, onRegenerate, onUpscale,
+    onOpenFolder, onLoadMetadata,
     onLoadComplete
 }: HistoryImageItemProps) {
     const { t } = useTranslation()
@@ -153,6 +166,17 @@ const HistoryImageItem = memo(function HistoryImageItem({
                             Loading...
                         </div>
                     )}
+                    {/* 다시 생성·고화질로 다시 그리는 중 */}
+                    {busy && (
+                        <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-1 text-white">
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <span className="text-[10px] font-medium px-1 text-center">
+                                {busy === 'upscale'
+                                    ? t('comfy.upscale.running', '고화질로 다시 그리는 중…')
+                                    : t('comfy.regen.running', '같은 설정으로 다시 그리는 중…')}
+                            </span>
+                        </div>
+                    )}
                     <Button
                         variant="destructive"
                         size="icon"
@@ -182,28 +206,21 @@ const HistoryImageItem = memo(function HistoryImageItem({
                     <Copy className="h-4 w-4 mr-2" />
                     {t('actions.copy', '복사')}
                 </ContextMenuItem>
-                <ContextMenuItem onClick={() => onRegenerate(image)}>
+                <ContextMenuItem onClick={() => onRegenerate(image)} disabled={!!busy}>
                     <RotateCcw className="h-4 w-4 mr-2" />
                     {t('actions.regenerate', '재생성')}
                 </ContextMenuItem>
-                <ContextMenuItem onClick={() => onOpenSmartTools(image)}>
-                    <Wand2 className="h-4 w-4 mr-2" />
-                    {t('smartTools.title', '스마트 툴')}
+                {/* 스마트 툴·인페인팅·I2I·이미지 참조 자리: 고화질로 다시 그리기 */}
+                <ContextMenuItem onClick={() => onUpscale(image)} disabled={!!busy} className="items-start">
+                    <Maximize2 className="h-4 w-4 mr-2 mt-0.5" />
+                    <span className="flex flex-col">
+                        <span>{t('comfy.upscale.action', '고화질로 다시 그리기')}</span>
+                        <span className="text-[10px] leading-tight text-muted-foreground">
+                            {t('comfy.upscale.menuHint', '시드 없이 이 그림에서 시작 · 새 파일로 저장')}
+                        </span>
+                    </span>
                 </ContextMenuItem>
                 <ContextMenuSeparator />
-                <ContextMenuItem onClick={() => onInpaint(image)}>
-                    <Paintbrush className="h-4 w-4 mr-2" />
-                    {t('tools.inpainting.title', '인페인팅')}
-                </ContextMenuItem>
-                <ContextMenuItem onClick={() => onI2I(image)}>
-                    <ImageIcon className="h-4 w-4 mr-2" />
-                    {t('tools.i2i.title', 'Image to Image')}
-                </ContextMenuItem>
-                <ContextMenuSeparator />
-                <ContextMenuItem onClick={() => onAddAsReference(image)}>
-                    <Users className="h-4 w-4 mr-2" />
-                    {t('actions.addAsRef', '이미지 참조')}
-                </ContextMenuItem>
                 <ContextMenuItem onClick={() => onOpenFolder(image)} disabled={image.isTemporary}>
                     <FolderOpen className="h-4 w-4 mr-2" />
                     {t('actions.openFolder', '폴더 열기')}
@@ -219,22 +236,16 @@ const HistoryImageItem = memo(function HistoryImageItem({
 
 export function HistoryPanel() {
     const { t } = useTranslation()
-    const { setPreviewImage, isGenerating, setIsGenerating, setSourceImage, setI2IMode } = useGenerationStore()
-    const { savePath, useAbsolutePath } = useSettingsStore()
+    const { setPreviewImage } = useGenerationStore()
+    const { savePath, useAbsolutePath, upscaleScale, upscaleDenoise } = useSettingsStore()
     const [savedImages, setSavedImages] = useState<SavedImage[]>([])
     const [imageThumbnails, setImageThumbnails] = useState<Record<string, string>>({})
     const [isLoading, setIsLoading] = useState(false)
     const [metadataDialogOpen, setMetadataDialogOpen] = useState(false)
     const [selectedImageForMetadata, setSelectedImageForMetadata] = useState<string | undefined>()
-    const [imageRefDialogOpen, setImageRefDialogOpen] = useState(false)
-    const [selectedImageForRef, setSelectedImageForRef] = useState<string | null>(null)
-    // Inpainting dialog state
-    const [inpaintDialogOpen, setInpaintDialogOpen] = useState(false)
-    const [selectedImageForInpaint, setSelectedImageForInpaint] = useState<string | null>(null)
+    // 다시 생성·고화질로 다시 그리는 중인 그림 (경로 → 하는 일)
+    const [busyImages, setBusyImages] = useState<Record<string, BusyKind>>({})
     const navigate = useNavigate()
-    const { setActiveImage } = useToolsStore()
-
-
 
     // LRU cache limit for imageThumbnails to prevent memory bloat
     const MAX_THUMBNAIL_CACHE = 20
@@ -243,7 +254,7 @@ export function HistoryPanel() {
         setImageThumbnails(prev => {
             // Skip if already cached with same data
             if (prev[path] === data) return prev
-            
+
             const keys = Object.keys(prev)
             // If cache is full, remove oldest entries (first in object)
             if (keys.length >= MAX_THUMBNAIL_CACHE) {
@@ -265,29 +276,22 @@ export function HistoryPanel() {
     // Add new image instantly to history
     // Memory optimization: Use convertFileSrc for file-based images, only cache Base64 for temporary (memory://) images
     const addNewImage = useCallback((imagePath: string, imageData?: string) => {
-        const timestamp = Date.now()
         const isTemporary = imagePath.startsWith('memory://')
-        const name = imagePath.split(/[/\\]/).pop() || `NAIS_${timestamp}.png`
+        const name = imagePath.split(/[/\\]/).pop() || `NAIS_${Date.now()}.png`
+        // 저장 파일 이름의 시각을 쓴다 (다시 불러올 때와 같은 순서가 되게)
+        const timestamp = timestampOf(name) || Date.now()
 
         const newImage: SavedImage = {
             name,
             path: imagePath,
             timestamp,
-            type: imagePath.includes('NAIS_Scene') ? 'scene' :
-                name.includes('INPAINT_') ? 'inpaint' :
-                    name.includes('I2I_') ? 'i2i' :
-                        name.includes('UPSCALE_') ? 'upscale' :
-                            name.includes('LINEART_') ? 'lineart' :
-                                name.includes('SKETCH_') ? 'sketch' :
-                                    name.includes('COLORIZE_') ? 'colorize' :
-                                        name.includes('EMOTION_') ? 'emotion' :
-                                            name.includes('DECLUTTER_') ? 'declutter' : 'main',
+            type: classifyImage(name, imagePath),
             isTemporary
         }
 
         // Instantly add to list
         setSavedImages(prev => {
-            let next = [newImage, ...prev]
+            let next = [newImage, ...prev.filter(img => img.path !== imagePath)]
 
             // Limit temporary images to 10
             if (isTemporary) {
@@ -303,10 +307,10 @@ export function HistoryPanel() {
         })
 
         // Memory optimization: Only cache Base64 for temporary images, use convertFileSrc URL for files
-        const cacheData = isTemporary && imageData 
-            ? imageData 
+        const cacheData = isTemporary && imageData
+            ? imageData
             : convertFileSrc(imagePath)
-        
+
         setImageThumbnails(prev => {
             const keys = Object.keys(prev)
             if (keys.length >= MAX_THUMBNAIL_CACHE) {
@@ -319,19 +323,6 @@ export function HistoryPanel() {
         })
     }, [])
 
-    const getGenerationType = (name: string): SavedImage['type'] => {
-        if (name.includes('INPAINT_')) return 'inpaint'
-        if (name.includes('I2I_')) return 'i2i'
-        if (name.includes('UPSCALE_')) return 'upscale'
-        if (name.includes('SCENE_')) return 'scene'
-        if (name.includes('LINEART_')) return 'lineart'
-        if (name.includes('SKETCH_')) return 'sketch'
-        if (name.includes('COLORIZE_')) return 'colorize'
-        if (name.includes('EMOTION_')) return 'emotion'
-        if (name.includes('DECLUTTER_')) return 'declutter'
-        return 'main'
-    }
-
     // Get icon component for generation type
     const getTypeIcon = (type: SavedImage['type']) => {
         switch (type) {
@@ -339,6 +330,7 @@ export function HistoryPanel() {
             case 'inpaint': return <Paintbrush className="h-3 w-3 text-pink-400" />
             case 'upscale': return <Maximize2 className="h-3 w-3 text-purple-400" />
             case 'scene': return <Film className="h-3 w-3 text-emerald-400" />
+            case 'variation': return <Shuffle className="h-3 w-3 text-sky-400" />
             case 'lineart': return <PenTool className="h-3 w-3 text-slate-400" />
             case 'sketch': return <Pencil className="h-3 w-3 text-gray-400" />
             case 'colorize': return <Droplets className="h-3 w-3 text-cyan-400" />
@@ -349,161 +341,61 @@ export function HistoryPanel() {
     }
 
     // Load images from save path
-    const loadSavedImages = async () => {
+    // 폴더 규칙은 lib/output-save.ts 와 같다:
+    //   메인·고화질   <저장 위치>                (절대 경로를 정했으면 거기, 아니면 사진/<저장 위치>)
+    //   씬           <기준>/NAIS_Scene/<프리셋>/<씬>/   (예전 구조 <기준>/NAIS_Scene/<씬>/ 도)
+    //   변형 모드     <기준>/NAIS_Variation/<묶음>/
+    //   <기준> = 사진 폴더, 그리고 절대 경로를 정했으면 그 폴더도
+    const loadSavedImages = useCallback(async () => {
         setIsLoading(true)
         try {
             const images: SavedImage[] = []
+            const seen = new Set<string>()
             const picturePath = await pictureDir()
 
-            // 1. Load Main Output Images - Always load from Pictures/NAIS_Output first
-            const defaultOutputDir = 'NAIS_Output'
+            const pushFile = async (dir: string, fileName: string) => {
+                if (!IMAGE_FILE.test(fileName)) return
+                const fullPath = await join(dir, fileName)
+                if (seen.has(fullPath)) return
+                seen.add(fullPath)
+                images.push({
+                    name: fileName,
+                    path: fullPath,
+                    timestamp: timestampOf(fileName),
+                    type: classifyImage(fileName, fullPath),
+                })
+            }
 
-            // Always load from Pictures/NAIS_Output for backward compatibility
-            try {
-                if (await exists(defaultOutputDir, { baseDir: BaseDirectory.Picture })) {
-                    const entries = await readDir(defaultOutputDir, { baseDir: BaseDirectory.Picture })
-
+            /** 폴더 안의 그림 파일. depth > 0 이면 하위 폴더도 그만큼 내려간다 */
+            const scanDir = async (dir: string, depth: number) => {
+                try {
+                    if (!(await exists(dir))) return
+                    const entries = await readDir(dir)
                     for (const entry of entries) {
-                        if (entry.name && (entry.name.toLowerCase().endsWith('.png') || entry.name.toLowerCase().endsWith('.jpg') || entry.name.toLowerCase().endsWith('.webp'))) {
-                            const fullPath = await join(picturePath, defaultOutputDir, entry.name)
-                            const match = entry.name.match(/_(\d+)\.[^.]+$/)
-                            const timestamp = match ? parseInt(match[1]) : 0
-                            images.push({
-                                name: entry.name,
-                                path: fullPath,
-                                timestamp,
-                                type: getGenerationType(entry.name)
-                            })
-                        }
-                    }
-                }
-            } catch (e) {
-                console.warn('Failed to load from default Pictures folder:', e)
-            }
-
-            // Additionally load from absolute path if set
-            if (useAbsolutePath && savePath) {
-                try {
-                    if (await exists(savePath)) {
-                        const entries = await readDir(savePath)
-
-                        for (const entry of entries) {
-                            if (entry.name && (entry.name.toLowerCase().endsWith('.png') || entry.name.toLowerCase().endsWith('.jpg') || entry.name.toLowerCase().endsWith('.webp'))) {
-                                const fullPath = await join(savePath, entry.name)
-
-                                // Skip duplicates
-                                if (images.some(img => img.path === fullPath)) continue
-
-                                const match = entry.name.match(/_(\d+)\.[^.]+$/)
-                                const timestamp = match ? parseInt(match[1]) : 0
-                                images.push({
-                                    name: entry.name,
-                                    path: fullPath,
-                                    timestamp,
-                                    type: getGenerationType(entry.name)
-                                })
-                            }
+                        if (!entry.name) continue
+                        if (entry.isDirectory) {
+                            if (depth > 0) await scanDir(await join(dir, entry.name), depth - 1)
+                        } else {
+                            await pushFile(dir, entry.name)
                         }
                     }
                 } catch (e) {
-                    console.warn('Failed to load from absolute path:', e)
+                    console.warn('Failed to read history folder:', dir, e)
                 }
             }
 
-            // 2. Load Scene Images (Recursive) - Always load from Pictures, plus absolute path if set
-            const sceneBaseDir = 'NAIS_Scene'
-            const scenePicturePath = await pictureDir()
+            // 1. 메인 생성·고화질 (설정한 저장 위치 + 예전 기본 위치 사진/NAIS_Output)
+            const outputDirs = new Set<string>([
+                useAbsolutePath && savePath ? savePath : await join(picturePath, savePath || 'NAIS_Output'),
+                await join(picturePath, 'NAIS_Output'),
+            ])
+            for (const dir of outputDirs) await scanDir(dir, 0)
 
-            // Helper function to load scene images from a directory (supports presetName/sceneName structure)
-            const loadSceneImagesFromDir = async (baseDir: string, useBaseDir: boolean = false) => {
-                try {
-                    const checkExists = useBaseDir
-                        ? await exists(sceneBaseDir, { baseDir: BaseDirectory.Picture })
-                        : await exists(baseDir)
-
-                    if (!checkExists) return
-
-                    const presetOrSceneDirs = useBaseDir
-                        ? await readDir(sceneBaseDir, { baseDir: BaseDirectory.Picture })
-                        : await readDir(baseDir)
-
-                    for (const presetOrSceneDir of presetOrSceneDirs) {
-                        if (presetOrSceneDir.isDirectory) {
-                            try {
-                                const presetFolderPath = useBaseDir
-                                    ? `${sceneBaseDir}/${presetOrSceneDir.name}`
-                                    : await join(baseDir, presetOrSceneDir.name)
-
-                                const presetContents = useBaseDir
-                                    ? await readDir(presetFolderPath, { baseDir: BaseDirectory.Picture })
-                                    : await readDir(presetFolderPath)
-
-                                for (const item of presetContents) {
-                                    if (item.isDirectory) {
-                                        // This is the sceneName folder (new structure: presetName/sceneName/)
-                                        const sceneFolderPath = useBaseDir
-                                            ? `${presetFolderPath}/${item.name}`
-                                            : await join(presetFolderPath, item.name)
-
-                                        const sceneFiles = useBaseDir
-                                            ? await readDir(sceneFolderPath, { baseDir: BaseDirectory.Picture })
-                                            : await readDir(sceneFolderPath)
-
-                                        for (const file of sceneFiles) {
-                                            if (file.name && (file.name.toLowerCase().endsWith('.png') || file.name.toLowerCase().endsWith('.jpg') || file.name.toLowerCase().endsWith('.webp'))) {
-                                                const fullPath = useBaseDir
-                                                    ? await join(scenePicturePath, sceneBaseDir, presetOrSceneDir.name, item.name, file.name)
-                                                    : await join(sceneFolderPath, file.name)
-
-                                                if (images.some(img => img.path === fullPath)) continue
-
-                                                const match = file.name.match(/_(\d+)\.[^.]+$/)
-                                                const timestamp = match ? parseInt(match[1]) : 0
-
-                                                images.push({
-                                                    name: file.name,
-                                                    path: fullPath,
-                                                    timestamp,
-                                                    type: 'scene'
-                                                })
-                                            }
-                                        }
-                                    } else if (item.name && (item.name.toLowerCase().endsWith('.png') || item.name.toLowerCase().endsWith('.jpg') || item.name.toLowerCase().endsWith('.webp'))) {
-                                        // This is a direct image file (old structure: sceneName/image.png)
-                                        const fullPath = useBaseDir
-                                            ? await join(scenePicturePath, sceneBaseDir, presetOrSceneDir.name, item.name)
-                                            : await join(presetFolderPath, item.name)
-
-                                        if (images.some(img => img.path === fullPath)) continue
-
-                                        const match = item.name.match(/_(\d+)\.[^.]+$/)
-                                        const timestamp = match ? parseInt(match[1]) : 0
-
-                                        images.push({
-                                            name: item.name,
-                                            path: fullPath,
-                                            timestamp,
-                                            type: 'scene'
-                                        })
-                                    }
-                                }
-                            } catch (e) {
-                                console.warn(`Failed to read preset/scene dir ${presetOrSceneDir.name}:`, e)
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.warn('Failed to load scene images from:', baseDir, e)
-                }
-            }
-
-            // Always load from Pictures/NAIS_Scene (for backward compatibility)
-            await loadSceneImagesFromDir(sceneBaseDir, true)
-
-            // Additionally load from absolute path if set
-            if (useAbsolutePath && savePath) {
-                const absoluteSceneDir = await join(savePath, sceneBaseDir)
-                await loadSceneImagesFromDir(absoluteSceneDir, false)
+            // 2. 씬·변형 모드
+            const collectionRoots = new Set<string>([picturePath, ...(useAbsolutePath && savePath ? [savePath] : [])])
+            for (const root of collectionRoots) {
+                await scanDir(await join(root, 'NAIS_Scene'), 2)
+                await scanDir(await join(root, 'NAIS_Variation'), 1)
             }
 
             images.sort((a, b) => b.timestamp - a.timestamp)
@@ -528,11 +420,11 @@ export function HistoryPanel() {
             setSavedImages([])
         }
         setIsLoading(false)
-    }
+    }, [savePath, useAbsolutePath])
 
     useEffect(() => {
         loadSavedImages()
-    }, [savePath])
+    }, [loadSavedImages])
 
     // Listen for instant image updates from generation
     useEffect(() => {
@@ -551,23 +443,48 @@ export function HistoryPanel() {
     // For users generating 1000+ images, scanning the entire directory after EVERY generation
     // was the #1 cause of progressive slowdown.
 
+    /** 파일이면 경로, 임시 그림이면 data URL (생성 요청에 넘길 수 있는 형태) */
+    const sourceOf = (image: SavedImage): { path?: string; dataUrl?: string } | null => {
+        if (!image.isTemporary) return { path: image.path }
+        const data = imageThumbnails[image.path]
+        return data && data.startsWith('data:') ? { dataUrl: data } : null
+    }
+
+    /** 전체 그림을 data URL 로 (미리보기·메타데이터용) */
+    const loadDataUrl = async (image: SavedImage): Promise<string | undefined> => {
+        const cached = imageThumbnails[image.path]
+        if (cached && cached.startsWith('data:')) return cached
+        if (image.isTemporary) return undefined
+        const data = await readFile(image.path)
+        return `data:${imageMimeType(image.name)};base64,${bytesToBase64(data)}`
+    }
+
+    const setBusy = (path: string, kind: BusyKind | null) => {
+        setBusyImages(prev => {
+            const next = { ...prev }
+            if (kind) next[path] = kind
+            else delete next[path]
+            return next
+        })
+    }
+
+    /** 결과를 메인 미리보기에 띄운다 (메인 생성 중이면 생성 화면을 덮지 않는다). 다시 생성이면 새 시드를 정보 줄에 */
+    const showInPreview = (imageData: string, newSeed?: number) => {
+        const g = useGenerationStore.getState()
+        if (g.isGenerating) return
+        setPreviewImage(`data:image/png;base64,${imageData}`)
+        g.setPreviewSeed(newSeed && newSeed !== g.seed ? newSeed : null)
+    }
 
     const handleImageClick = async (image: SavedImage) => {
-        let finalDataUrl = imageThumbnails[image.path]
-
-        // If we have an asset:// URL or missing data, load as base64 for metadata parsing
-        if (!finalDataUrl || !finalDataUrl.startsWith('data:')) {
-            if (!image.isTemporary) {
-                try {
-                    const data = await readFile(image.path)
-                    const base64 = arrayBufferToBase64(data)
-                    finalDataUrl = `data:image/png;base64,${base64}`
-                } catch (e) {
-                    console.error('Failed to load image:', e)
-                    return
-                }
-            }
+        let finalDataUrl: string | undefined
+        try {
+            finalDataUrl = await loadDataUrl(image)
+        } catch (e) {
+            console.error('Failed to load image:', e)
+            return
         }
+        if (!finalDataUrl) return
 
         // Set preview
         setPreviewImage(finalDataUrl)
@@ -622,194 +539,106 @@ export function HistoryPanel() {
     }
 
     const handleLoadMetadata = async (image: SavedImage) => {
-        let imageData = imageThumbnails[image.path]
-
-        // Always load as base64 for MetadataDialog (asset:// URLs don't work)
-        if (!imageData || !imageData.startsWith('data:')) {
-            try {
-                const data = await readFile(image.path)
-                const base64 = arrayBufferToBase64(data)
-                imageData = `data:image/png;base64,${base64}`
-            } catch {
-                return
-            }
+        // Always load as base64 for MetadataDialog (file URLs are not parsed there)
+        let imageData: string | undefined
+        try {
+            imageData = await loadDataUrl(image)
+        } catch {
+            return
         }
+        if (!imageData) return
 
         setSelectedImageForMetadata(imageData)
         setMetadataDialogOpen(true)
     }
 
     const handleCopyImage = async (image: SavedImage) => {
-        const imageData = imageThumbnails[image.path]
-        if (!imageData) return
-
         try {
-            const response = await fetch(imageData)
-            const blob = await response.blob()
-            await navigator.clipboard.write([
-                new ClipboardItem({ [blob.type]: blob })
-            ])
+            if (image.isTemporary) {
+                const imageData = imageThumbnails[image.path]
+                if (!imageData) return
+                const blob = await (await fetch(imageData)).blob()
+                await copyImageToClipboard(blob, image.name)
+            } else {
+                await copyImageToClipboard(await readFile(image.path), image.name)
+            }
+            toast({ title: t('actions.copied', '복사 완료'), variant: 'success' })
         } catch (e) {
             console.error('Copy failed:', e)
+            toast({ title: t('actions.copyFailed', '복사 실패'), variant: 'destructive' })
         }
     }
 
-    // Regenerate image with its metadata
+    // 다시 생성: 이 그림의 생성 정보 그대로, 시드만 새로 뽑아 한 장 더 (메인 저장 위치에 저장)
     const handleRegenerate = async (image: SavedImage) => {
-        if (isGenerating) {
-            toast({ title: t('toast.generating', '생성 중입니다...'), variant: 'default' })
+        if (busyImages[image.path]) return
+        const source = sourceOf(image)
+        if (!source) {
+            toast({ title: t('comfy.regen.failed', '다시 생성하지 못했습니다'), description: t('comfy.history.noData', '이 임시 그림의 데이터가 더 이상 없습니다.'), variant: 'destructive' })
             return
         }
-
-        // Always load as base64 for metadata parsing (asset:// URLs don't work with parseMetadataFromBase64)
-        let finalData: string | undefined
-        if (!image.isTemporary) {
-            try {
-                const data = await readFile(image.path)
-                const base64 = arrayBufferToBase64(data)
-                finalData = `data:image/png;base64,${base64}`
-            } catch (e) {
-                console.error('Failed to load image for regenerate:', e)
-                return
-            }
-        } else {
-            finalData = imageThumbnails[image.path]
-            if (finalData && !finalData.startsWith('data:')) {
-                // Can't regenerate from asset:// URL without file path
-                return
-            }
-        }
-
-        if (!finalData) return
-
-        const token = useAuthStore.getState().token
-        if (!token) {
-            toast({ title: t('toast.tokenRequired.title', '토큰 필요'), variant: 'destructive' })
-            return
-        }
-
+        setBusy(image.path, 'regenerate')
+        toast({
+            title: t('comfy.regen.startTitle', '같은 설정으로 다시 그리는 중…'),
+            description: t('comfy.regen.startDesc', '이 그림의 생성 정보로 시드만 바꿔 한 장 더 그립니다.'),
+        })
         try {
-            const metadata = await parseMetadataFromBase64(finalData)
-            if (!metadata) {
-                toast({
-                    title: t('toast.noMetadata', '메타데이터 없음'),
-                    description: t('toast.noMetadataDesc', '이 이미지에서 메타데이터를 찾을 수 없습니다'),
-                    variant: 'destructive',
-                })
-                return
-            }
-
-            setIsGenerating(true)
-            const newSeed = Math.floor(Math.random() * 4294967295)
-
-            // Map model name to API ID
-            const mapModelNameToId = (name?: string): string => {
-                if (!name) return 'nai-diffusion-4-5-full'
-                const lower = name.toLowerCase()
-                if (lower.includes('4.5') || lower.includes('4-5')) {
-                    if (lower.includes('curated')) return 'nai-diffusion-4-5-curated'
-                    return 'nai-diffusion-4-5-full'
-                }
-                if (lower.includes('v4') || lower.includes('4')) {
-                    if (lower.includes('curated')) return 'nai-diffusion-4-curated-preview'
-                    return 'nai-diffusion-4-full'
-                }
-                if (lower.includes('furry')) return 'nai-diffusion-furry-3'
-                if (lower.includes('v3') || lower.includes('3')) return 'nai-diffusion-3'
-                return 'nai-diffusion-4-5-full'
-            }
-
-            const result = await generateImage(token, {
-                prompt: metadata.prompt || '',
-                negative_prompt: metadata.negativePrompt || '',
-                model: mapModelNameToId(metadata.model),
-                width: metadata.width || 832,
-                height: metadata.height || 1216,
-                steps: metadata.steps || 28,
-                cfg_scale: metadata.cfgScale || 5,
-                cfg_rescale: metadata.cfgRescale || 0,
-                sampler: metadata.sampler || 'k_euler',
-                scheduler: metadata.scheduler || 'native',
-                smea: metadata.smea ?? true,
-                smea_dyn: metadata.smeaDyn ?? false,
-                variety: metadata.variety ?? false,
-                seed: newSeed,
-                imageFormat: useSettingsStore.getState().imageFormat,
-            })
-
+            const result = await regenerateFromImage(source)
             if (result.success && result.imageData) {
-                const { imageFormat } = useSettingsStore.getState()
-                const mimeType = imageFormat === 'webp' ? 'image/webp' : 'image/png'
-                const fileExt = imageFormat === 'webp' ? 'webp' : 'png'
-                setPreviewImage(`data:${mimeType};base64,${result.imageData}`)
-
-                // Save to disk if autoSave is enabled
-                const { autoSave, useAbsolutePath } = useSettingsStore.getState()
-                if (autoSave) {
-                    try {
-                        const binaryString = atob(result.imageData)
-                        const bytes = new Uint8Array(binaryString.length)
-                        for (let j = 0; j < binaryString.length; j++) {
-                            bytes[j] = binaryString.charCodeAt(j)
-                        }
-
-                        const fileName = `NAIS_${Date.now()}.${fileExt}`
-                        const outputDir = savePath || 'NAIS_Output'
-
-                        let fullPath: string
-
-                        if (useAbsolutePath) {
-                            // Save to absolute path directly
-                            const dirExists = await exists(outputDir)
-                            if (!dirExists) {
-                                await mkdir(outputDir, { recursive: true })
-                            }
-                            fullPath = await join(outputDir, fileName)
-                            await writeFile(fullPath, bytes)
-                        } else {
-                            // Save relative to Pictures directory
-                            const dirExists = await exists(outputDir, { baseDir: BaseDirectory.Picture })
-                            if (!dirExists) {
-                                await mkdir(outputDir, { baseDir: BaseDirectory.Picture })
-                            }
-                            await writeFile(`${outputDir}/${fileName}`, bytes, { baseDir: BaseDirectory.Picture })
-                            const picPath = await pictureDir()
-                            fullPath = await join(picPath, outputDir, fileName)
-                        }
-
-                        // Dispatch event for instant history update
-                        try {
-                            window.dispatchEvent(new CustomEvent('newImageGenerated', {
-                                detail: { path: fullPath, data: `data:${mimeType};base64,${result.imageData}` }
-                            }))
-                        } catch (e) {
-                            console.warn('Failed to dispatch newImageGenerated event:', e)
-                        }
-                    } catch (e) {
-                        console.warn('Failed to save regenerated image:', e)
-                    }
-                } else {
-                    // Auto-save OFF (Regenerate): Dispatch memory-only event
-                    const fileName = `NAIS_${Date.now()}.${fileExt}`
-                    const memoryPath = `memory://${fileName}`
-
-                    try {
-                        window.dispatchEvent(new CustomEvent('newImageGenerated', {
-                            detail: { path: memoryPath, data: `data:${mimeType};base64,${result.imageData}` }
-                        }))
-                    } catch (e) {
-                        console.warn('Failed to dispatch newImageGenerated event (Memory):', e)
-                    }
-                }
-
-                toast({ title: t('toast.regenerated', '재생성 완료'), variant: 'success' })
+                showInPreview(result.imageData, result.seed)
+                toast({
+                    title: t('toast.regenerated', '재생성 완료'),
+                    description: t('comfy.regen.doneDesc', '새 시드 {{seed}} · 기록 패널에 추가했습니다', { seed: result.seed }),
+                    variant: 'success',
+                })
+            } else if (result.interrupted) {
+                toast({ title: t('comfy.regen.stopped', '다시 생성을 멈췄습니다') })
             } else {
-                toast({ title: t('toast.generateFailed', '생성 실패'), description: result.error, variant: 'destructive' })
+                toast({ title: t('comfy.regen.failed', '다시 생성하지 못했습니다'), description: result.error, variant: 'destructive' })
             }
         } catch (e) {
             console.error('Regenerate failed:', e)
+            toast({ title: t('comfy.regen.failed', '다시 생성하지 못했습니다'), description: (e as Error)?.message, variant: 'destructive' })
         } finally {
-            setIsGenerating(false)
+            setBusy(image.path, null)
+        }
+    }
+
+    // 고화질로 다시 그리기: 그림 자체에서 시작하므로 시드가 없어도 된다. 원본 옆(씬 그림이면 씬 폴더)에 새 파일로 저장
+    const handleUpscale = async (image: SavedImage) => {
+        if (busyImages[image.path]) return
+        const source = sourceOf(image)
+        if (!source) {
+            toast({ title: t('comfy.upscale.failed', '고화질로 다시 그리지 못했습니다'), description: t('comfy.history.noData', '이 임시 그림의 데이터가 더 이상 없습니다.'), variant: 'destructive' })
+            return
+        }
+        setBusy(image.path, 'upscale')
+        toast({
+            title: t('comfy.upscale.startTitle', '고화질로 다시 그리는 중…'),
+            description: t('comfy.upscale.startDesc', '원본은 그대로 두고 새 파일로 저장합니다 ({{scale}}배, 다듬기 강도 {{denoise}})', { scale: upscaleScale, denoise: upscaleDenoise }),
+        })
+        try {
+            const result = await upscaleExisting(source)
+            if (result.success && result.imageData) {
+                showInPreview(result.imageData)
+                const fileName = result.saved?.path.split(/[\\/]/).pop() ?? ''
+                toast({
+                    title: t('comfy.upscale.done', '고화질 그림을 저장했습니다'),
+                    description: result.saved?.saved
+                        ? t('comfy.upscale.doneDesc', '{{file}} · {{width}}×{{height}} · 기록 패널에 추가했습니다', { file: fileName, width: result.width, height: result.height })
+                        : t('comfy.upscale.doneMemory', '{{width}}×{{height}} · 자동 저장이 꺼져 있어 기록 패널에만 있습니다', { width: result.width, height: result.height }),
+                    variant: 'success',
+                })
+            } else if (result.interrupted) {
+                toast({ title: t('comfy.upscale.stopped', '고화질로 다시 그리기를 멈췄습니다') })
+            } else {
+                toast({ title: t('comfy.upscale.failed', '고화질로 다시 그리지 못했습니다'), description: result.error, variant: 'destructive' })
+            }
+        } catch (e) {
+            console.error('Upscale failed:', e)
+            toast({ title: t('comfy.upscale.failed', '고화질로 다시 그리지 못했습니다'), description: (e as Error)?.message, variant: 'destructive' })
+        } finally {
+            setBusy(image.path, null)
         }
     }
 
@@ -820,28 +649,6 @@ export function HistoryPanel() {
             await revealItemInDir(image.path)
         } catch (e) {
             console.error('Failed to open folder:', e)
-        }
-    }
-
-    const handleOpenSmartTools = async (image: SavedImage) => {
-        setIsLoading(true)
-        try {
-            let base64 = imageThumbnails[image.path]
-
-            if (!base64 && !image.isTemporary) {
-                // Read full image file to pass to tools
-                const data = await readFile(image.path)
-                base64 = `data:image/png;base64,${arrayBufferToBase64(data)}`
-            }
-
-            if (base64) {
-                setActiveImage(base64)
-                navigate('/tools')
-            }
-        } catch (e) {
-            toast({ title: t('smartTools.error', '이미지 로드 실패'), variant: 'destructive' })
-        } finally {
-            setIsLoading(false)
         }
     }
 
@@ -862,67 +669,19 @@ export function HistoryPanel() {
                 data = await readFile(image.path)
             }
 
+            const ext = imageExtension(image.name)
             const filePath = await save({
-                defaultPath: image.name,
-                filters: [{ name: 'PNG Image', extensions: ['png'] }],
+                defaultPath: withImageExtension(image.name, ext),
+                filters: [{ name: t('comfy.file.imageFilter', '{{ext}} 그림', { ext: ext.toUpperCase() }), extensions: [ext] }],
             })
             if (filePath) {
-                await writeFile(filePath, data)
+                await writeFile(withImageExtension(filePath, ext), data)
                 toast({ title: t('toast.saved', '저장 완료'), variant: 'success' })
             }
         } catch (e) {
             console.error('Save failed:', e)
             toast({ title: t('toast.saveFailed', '저장 실패'), variant: 'destructive' })
         }
-    }
-
-    const handleAddAsReference = async (image: SavedImage) => {
-        let imageData = imageThumbnails[image.path]
-        if (!imageData && !image.isTemporary) {
-            try {
-                const data = await readFile(image.path)
-                const base64 = arrayBufferToBase64(data)
-                imageData = `data:image/png;base64,${base64}`
-            } catch { return }
-        }
-        setSelectedImageForRef(imageData)
-        setImageRefDialogOpen(true)
-    }
-
-    // Inpainting: Open dialog directly with image (source/mode set when mask is saved)
-    const handleInpaint = async (image: SavedImage) => {
-        let imageData = imageThumbnails[image.path]
-        if (!imageData && !image.isTemporary) {
-            try {
-                const data = await readFile(image.path)
-                const base64 = arrayBufferToBase64(data)
-                imageData = `data:image/png;base64,${base64}`
-                // NOT caching full base64 in thumbnails - use directly
-            } catch { return }
-        }
-        if (!imageData) return
-        
-        // Only open dialog - source/mode will be set when mask is saved
-        setSelectedImageForInpaint(imageData)
-        setInpaintDialogOpen(true)
-    }
-
-    // I2I: Set source and navigate to main mode
-    const handleI2I = async (image: SavedImage) => {
-        let imageData = imageThumbnails[image.path]
-        if (!imageData && !image.isTemporary) {
-            try {
-                const data = await readFile(image.path)
-                const base64 = arrayBufferToBase64(data)
-                imageData = `data:image/png;base64,${base64}`
-                // NOT caching full base64 in thumbnails - use directly
-            } catch { return }
-        }
-        if (!imageData) return
-        
-        setSourceImage(imageData)
-        setI2IMode('i2i')
-        navigate('/')
     }
 
     return (
@@ -967,16 +726,14 @@ export function HistoryPanel() {
                                 thumbnail={imageThumbnails[image.path]}
                                 onLoadComplete={handleImageLoadComplete}
                                 index={index}
+                                busy={busyImages[image.path]}
                                 getTypeIcon={getTypeIcon}
                                 onImageClick={handleImageClick}
                                 onDelete={handleDeleteImage}
                                 onSaveAs={handleSaveAs}
                                 onCopy={handleCopyImage}
                                 onRegenerate={handleRegenerate}
-                                onOpenSmartTools={handleOpenSmartTools}
-                                onAddAsReference={handleAddAsReference}
-                                onInpaint={handleInpaint}
-                                onI2I={handleI2I}
+                                onUpscale={handleUpscale}
                                 onOpenFolder={handleOpenFolder}
                                 onLoadMetadata={handleLoadMetadata}
                             />
@@ -992,21 +749,6 @@ export function HistoryPanel() {
                     if (!open) setSelectedImageForMetadata(undefined)
                 }}
                 initialImage={selectedImageForMetadata}
-            />
-
-            <ImageReferenceDialog
-                open={imageRefDialogOpen}
-                onOpenChange={setImageRefDialogOpen}
-                imageBase64={selectedImageForRef}
-            />
-
-            <InpaintingDialog
-                open={inpaintDialogOpen}
-                onOpenChange={(open) => {
-                    setInpaintDialogOpen(open)
-                    if (!open) setSelectedImageForInpaint(null)
-                }}
-                sourceImage={selectedImageForInpaint}
             />
         </div>
     )

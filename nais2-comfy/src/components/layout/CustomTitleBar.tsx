@@ -1,3 +1,6 @@
+// 지금은 쓰지 않는다: NAIS2 Comfy 창은 Edge 앱 창이라 제목 줄(최소화·최대화·닫기)을 창이 직접 그린다.
+// 사이드바 접기 버튼은 ThreeColumnLayout 가운데 메뉴 양옆에 있다.
+// (창 조작은 shims/window.ts 에서 아무 일도 하지 않는 함수라 그대로 두어도 컴파일된다)
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getCurrentWindow } from '@tauri-apps/api/window'

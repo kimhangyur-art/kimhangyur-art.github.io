@@ -27,6 +27,8 @@ interface LibraryState {
     setGridColumns: (columns: number) => void
 
     addItem: (item: LibraryItem) => void
+    /** afterId 바로 뒤에 넣는다 (스택 안에 있으면 그 스택 안에). 못 찾으면 맨 앞에 */
+    insertItemAfter: (afterId: string, item: LibraryItem) => void
     removeItem: (id: string) => void
     removeItems: (ids: string[]) => void
     setItems: (items: LibraryItem[]) => void
@@ -73,8 +75,33 @@ export const useLibraryStore = create<LibraryState>()(
                 items: [item, ...state.items]
             })),
 
+            insertItemAfter: (afterId, item) => set((state) => {
+                const top = state.items.findIndex((i) => i.id === afterId)
+                if (top >= 0) {
+                    const items = [...state.items]
+                    items.splice(top + 1, 0, item)
+                    return { items }
+                }
+                let placed = false
+                const items = state.items.map((i) => {
+                    if (placed || !i.isStack || !i.stackItems) return i
+                    const idx = i.stackItems.findIndex((si) => si.id === afterId)
+                    if (idx < 0) return i
+                    placed = true
+                    const stackItems = [...i.stackItems]
+                    stackItems.splice(idx + 1, 0, item)
+                    return { ...i, stackItems }
+                })
+                return { items: placed ? items : [item, ...state.items] }
+            }),
+
+            // 스택 안의 그림도 지운다 (스택 안에서 우클릭 → 삭제)
             removeItem: (id) => set((state) => ({
-                items: state.items.filter((item) => item.id !== id)
+                items: state.items
+                    .filter((item) => item.id !== id)
+                    .map((item) => item.isStack && item.stackItems?.some((si) => si.id === id)
+                        ? { ...item, stackItems: item.stackItems.filter((si) => si.id !== id) }
+                        : item)
             })),
 
             removeItems: (ids) => set((state) => ({

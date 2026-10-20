@@ -14,7 +14,47 @@ import { useFragmentStore, normalizeFragmentPath } from '@/stores/fragment-store
  *    - 파일 없이 인라인으로 옵션 정의
  * 5. 순차 모드: <*filename>
  *    - 랜덤이 아닌 순서대로 선택 (배치 생성용)
+ *
+ * ComfyUI 문법은 건드리지 않는다:
+ * - (태그:1.2) 같은 가중치 묶음 (슬래시가 있어도: (fate/stay night:1.2))
+ * - \( \) 로 쓴 글자 괄호: \(fate/stay night\)
+ * - embedding:폴더/이름, <lora:폴더/이름:0.8>
  */
+
+// ( ... :1.2) 처럼 끝이 ComfyUI 가중치인 묶음
+const COMFY_WEIGHT_TAIL = /:\s*-?\d*\.?\d+\s*$/
+// <lora:...>, <lyco:...>, <hypernet:...> (A1111식 LoRA 표기) — 조각 파일이 아니다
+const EXTRA_NETWORK_TAG = /^\s*(lora|lyco|hypernet)\s*:/i
+const PAREN_WILDCARD = /\(([^()]+\/[^()]+)\)/g
+
+/** 괄호 와일드카드로 볼 수 있는 묶음인지 (글자 괄호·ComfyUI 가중치면 false) */
+function isParenWildcard(content: string, offset: number, whole: string): boolean {
+    // \( 로 시작하는 글자 괄호
+    if (offset > 0 && whole[offset - 1] === '\\') return false
+    // ...\) 로 끝나는 글자 괄호
+    if (content.endsWith('\\')) return false
+    // (a/b:1.2) — ComfyUI 가중치
+    if (COMFY_WEIGHT_TAIL.test(content)) return false
+    return true
+}
+
+/** "a/b/c" 처럼 쉼표 사이에 있는 단순 와일드카드로 볼 수 있는 조각인지 */
+function isSimpleWildcardToken(trimmed: string): boolean {
+    if (!trimmed.includes('/')) return false
+    // URL
+    if (trimmed.startsWith('http') || trimmed.includes('://')) return false
+    // 공백이 있으면 괄호 형식을 써야 한다
+    if (trimmed.includes(' ')) return false
+    // \( \) 글자 괄호, 이스케이프
+    if (trimmed.includes('\\')) return false
+    // 괄호가 남아 있으면 앞 단계에서 일부러 남긴 것 (ComfyUI 가중치 등)
+    if (trimmed.includes('(') || trimmed.includes(')')) return false
+    // embedding:폴더/이름
+    if (/^embedding:/i.test(trimmed)) return false
+    // <lora:폴더/이름:0.8>, 못 찾은 <조각/이름>
+    if (trimmed.includes('<') || trimmed.includes('>')) return false
+    return true
+}
 
 /**
  * 파일 기반 조각 프롬프트 처리 (비동기)
@@ -42,6 +82,11 @@ async function processFileWildcards(prompt: string): Promise<string> {
     const replacements = await Promise.all(
         matches.map(async ({ match, content }) => {
             const trimmed = content.trim()
+
+            // 0. <lora:이름:0.8> 같은 표기는 조각이 아니다 — 그대로 둔다
+            if (EXTRA_NETWORK_TAG.test(trimmed)) {
+                return { match, replacement: match }
+            }
 
             // 1. 인라인 와일드카드: <option1|option2|option3>
             if (trimmed.includes('|')) {
@@ -97,9 +142,10 @@ async function processFileWildcards(prompt: string): Promise<string> {
 function processParenthesisWildcards(prompt: string): string {
     // 괄호 안에 슬래시가 있는 패턴 찾기
     // 중첩 괄호는 지원하지 않음
-    const parenPattern = /\(([^()]+\/[^()]+)\)/g
+    return prompt.replace(PAREN_WILDCARD, (match: string, content: string, offset: number, whole: string) => {
+        // 글자 괄호 \(...\) 와 ComfyUI 가중치 (...:1.2) 는 그대로 둔다
+        if (!isParenWildcard(content, offset, whole)) return match
 
-    return prompt.replace(parenPattern, (_match, content: string) => {
         // 슬래시로 옵션 분리
         const options = content.split('/').map((o: string) => o.trim()).filter((o: string) => o.length > 0)
 
@@ -125,13 +171,9 @@ function processSimpleWildcards(prompt: string): string {
     const processedTags = tags.map(tag => {
         const trimmed = tag.trim()
 
-        // 슬래시가 있고, URL이 아니며, 공백이 없는 단순 형태만 처리
+        // 슬래시가 있고, URL·ComfyUI 문법이 아니며, 공백이 없는 단순 형태만 처리
         // 공백이 있으면 괄호 형식을 사용해야 함
-        if (trimmed.includes('/') &&
-            !trimmed.startsWith('http') &&
-            !trimmed.includes('://') &&
-            !trimmed.includes(' ')) {
-
+        if (isSimpleWildcardToken(trimmed)) {
             const options = trimmed.split('/').map(o => o.trim()).filter(o => o.length > 0)
             if (options.length > 1) {
                 const randomIndex = Math.floor(Math.random() * options.length)
@@ -184,23 +226,20 @@ export async function processWildcards(prompt: string): Promise<string> {
 export function hasWildcards(prompt: string): boolean {
     if (!prompt) return false
 
-    // 파일 기반 조각 프롬프트 체크 <...>
-    if (/<[^<>]+>/.test(prompt)) return true
+    // 파일 기반 조각 프롬프트 체크 <...> (<lora:...> 는 제외)
+    for (const m of prompt.matchAll(/<([^<>]+)>/g)) {
+        if (!EXTRA_NETWORK_TAG.test(m[1])) return true
+    }
 
-    // 괄호 형식 체크
-    const parenPattern = /\([^()]+\/[^()]+\)/
-    if (parenPattern.test(prompt)) return true
+    // 괄호 형식 체크 (글자 괄호·ComfyUI 가중치 제외)
+    for (const m of prompt.matchAll(PAREN_WILDCARD)) {
+        if (isParenWildcard(m[1], m.index ?? 0, prompt)) return true
+    }
 
     // 단순 형식 체크 (쉼표로 구분된 태그 내 슬래시, 공백 없음)
     const tags = prompt.split(',')
     for (const tag of tags) {
-        const trimmed = tag.trim()
-        if (trimmed.includes('/') &&
-            !trimmed.startsWith('http') &&
-            !trimmed.includes('://') &&
-            !trimmed.includes(' ')) {
-            return true
-        }
+        if (isSimpleWildcardToken(tag.trim())) return true
     }
 
     return false

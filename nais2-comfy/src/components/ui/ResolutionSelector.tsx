@@ -29,8 +29,8 @@ export const RESOLUTION_PRESETS = [
     { key: 'wideLandscape', width: 1536, height: 640 },
 ]
 
-// NovelAI requires dimensions to be multiples of 64
-export const roundTo64 = (value: number): number => Math.round(value / 64) * 64
+// ComfyUI(SD 계열)는 가로·세로가 8의 배수면 된다 (NovelAI는 64의 배수였다)
+export const roundTo8 = (value: number): number => Math.max(64, Math.round((Number(value) || 0) / 8) * 8)
 
 export interface Resolution {
     label: string
@@ -97,9 +97,9 @@ export function ResolutionSelector({ value, onChange, disabled }: ResolutionSele
     }
 
     const handleCustomSave = () => {
-        // Round to nearest multiple of 64 (NovelAI requirement)
-        const width = roundTo64(Number(customWidth))
-        const height = roundTo64(Number(customHeight))
+        // 가까운 8의 배수로 맞춘다 (ComfyUI)
+        const width = roundTo8(Number(customWidth))
+        const height = roundTo8(Number(customHeight))
         const label = customLabel || `${width}x${height}`
 
         addCustomResolution({ label, width, height })
@@ -232,7 +232,7 @@ export function ResolutionSelector({ value, onChange, disabled }: ResolutionSele
                     <DialogHeader>
                         <DialogTitle>{t('resolutions.addCustom')}</DialogTitle>
                         <DialogDescription>
-                            {t('resolutions.addCustomDesc')}
+                            {t('comfy.resolution.addCustomDesc', '새 해상도를 추가합니다. 가로·세로는 8의 배수로 자동으로 맞춥니다. SDXL 모델은 가로×세로가 약 100만 화소(예: 832×1216)일 때 가장 잘 나옵니다.')}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
@@ -255,14 +255,14 @@ export function ResolutionSelector({ value, onChange, disabled }: ResolutionSele
                                 <Input
                                     id="width"
                                     type="number"
-                                    step={64}
+                                    step={8}
                                     value={customWidth}
                                     onChange={(e) => setCustomWidth(Number(e.target.value))}
                                     className="flex-1"
                                 />
-                                {roundTo64(customWidth) !== customWidth && (
+                                {roundTo8(customWidth) !== customWidth && (
                                     <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                        → {roundTo64(customWidth)}
+                                        → {roundTo8(customWidth)}
                                     </span>
                                 )}
                             </div>
@@ -275,21 +275,21 @@ export function ResolutionSelector({ value, onChange, disabled }: ResolutionSele
                                 <Input
                                     id="height"
                                     type="number"
-                                    step={64}
+                                    step={8}
                                     value={customHeight}
                                     onChange={(e) => setCustomHeight(Number(e.target.value))}
                                     className="flex-1"
                                 />
-                                {roundTo64(customHeight) !== customHeight && (
+                                {roundTo8(customHeight) !== customHeight && (
                                     <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                        → {roundTo64(customHeight)}
+                                        → {roundTo8(customHeight)}
                                     </span>
                                 )}
                             </div>
                         </div>
                         {/* Preview of final resolution */}
                         <div className="text-center text-sm text-muted-foreground pt-2 border-t">
-                            {t('resolutions.finalResolution', '최종 해상도')}: <span className="font-mono font-medium text-foreground">{roundTo64(customWidth)} × {roundTo64(customHeight)}</span>
+                            {t('resolutions.finalResolution', '최종 해상도')}: <span className="font-mono font-medium text-foreground">{roundTo8(customWidth)} × {roundTo8(customHeight)}</span>
                         </div>
                     </div>
                     <DialogFooter>

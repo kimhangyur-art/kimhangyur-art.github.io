@@ -6,8 +6,9 @@ import { LibraryItem } from './LibraryItem'
 interface SortableLibraryItemProps {
     item: LibraryItemType
     onRename: (item: LibraryItemType) => void
-    onAddRef: (item: LibraryItemType) => void
     onLoadMetadata: (item: LibraryItemType) => void
+    onUpscale?: (item: LibraryItemType) => void
+    isBusy?: boolean
     onImageClick?: (imageUrl: string) => void
     isEditMode?: boolean
     isSelected?: boolean
@@ -15,7 +16,7 @@ interface SortableLibraryItemProps {
     disabled?: boolean
 }
 
-export function SortableLibraryItem({ item, onRename, onAddRef, onLoadMetadata, onImageClick, isEditMode, isSelected, onSelectionClick, disabled }: SortableLibraryItemProps) {
+export function SortableLibraryItem({ item, onRename, onLoadMetadata, onUpscale, isBusy, onImageClick, isEditMode, isSelected, onSelectionClick, disabled }: SortableLibraryItemProps) {
     const {
         attributes,
         listeners,
@@ -36,8 +37,9 @@ export function SortableLibraryItem({ item, onRename, onAddRef, onLoadMetadata, 
             <LibraryItem 
                 item={item} 
                 onRename={onRename} 
-                onAddRef={onAddRef} 
                 onLoadMetadata={onLoadMetadata} 
+                onUpscale={onUpscale}
+                isBusy={isBusy}
                 onImageClick={onImageClick}
                 isEditMode={isEditMode}
                 isSelected={isSelected}

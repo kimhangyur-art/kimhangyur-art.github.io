@@ -2,93 +2,59 @@
  * Image utility functions for memory-efficient image handling
  */
 
-import { writeFile, readFile, remove, mkdir, exists } from '@tauri-apps/plugin-fs'
-import { appDataDir, join } from '@tauri-apps/api/path'
-
 // ============================================
-// Reference Image File Storage
+// File type helpers (저장·복사)
 // ============================================
 
-let _referencesDir: string | null = null
+/** 파일 이름·경로의 확장자 (점 없이, 소문자). 없으면 'png' */
+export function imageExtension(nameOrPath: string): string {
+    const base = nameOrPath.split(/[\\/]/).pop() ?? nameOrPath
+    const m = /\.([a-z0-9]+)$/i.exec(base)
+    const ext = m ? m[1].toLowerCase() : 'png'
+    return ext === 'jpeg' ? 'jpg' : ext
+}
 
-/** Get (or create) the references directory: AppData/NAIS2/references/ */
-export async function getReferencesDir(): Promise<string> {
-    if (_referencesDir) return _referencesDir
-    const appData = await appDataDir()
-    const dir = await join(appData, 'references')
-    if (!(await exists(dir))) {
-        await mkdir(dir, { recursive: true })
+/** 확장자에 맞는 MIME 형식 */
+export function imageMimeType(nameOrPath: string): string {
+    switch (imageExtension(nameOrPath)) {
+        case 'jpg': return 'image/jpeg'
+        case 'webp': return 'image/webp'
+        case 'gif': return 'image/gif'
+        case 'bmp': return 'image/bmp'
+        default: return 'image/png'
     }
-    _referencesDir = dir
-    return dir
 }
 
-/** Save a base64 image to file. Returns the file path. */
-export async function saveReferenceImage(id: string, base64: string): Promise<string> {
-    const dir = await getReferencesDir()
-    const filePath = await join(dir, `${id}.bin`)
-    // Strip data URI prefix if present
-    const raw = base64.includes(',') ? base64.split(',')[1] : base64
-    const binary = Uint8Array.from(atob(raw), c => c.charCodeAt(0))
-    await writeFile(filePath, binary)
-    return filePath
+/** 이름에 확장자가 없으면 붙인다 (다른 이름으로 저장) */
+export function withImageExtension(name: string, ext: string): string {
+    return new RegExp(`\\.${ext}$`, 'i').test(name) ? name : `${name}.${ext}`
 }
 
-/** Load a base64 image from file. Returns data URI string or null if not found. */
-export async function loadReferenceImage(filePath: string): Promise<string | null> {
-    try {
-        if (!(await exists(filePath))) return null
-        const data = await readFile(filePath)
-        // Convert to base64
-        let binary = ''
-        const bytes = new Uint8Array(data)
-        const chunkSize = 8192
-        for (let i = 0; i < bytes.length; i += chunkSize) {
-            binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+/**
+ * 그림을 클립보드에 복사한다.
+ * 바이트에 확장자에 맞는 형식을 붙이고, 브라우저 클립보드가 PNG만 받으므로 PNG가 아니면 PNG로 바꿔 넣는다.
+ */
+export async function copyImageToClipboard(data: Uint8Array | Blob, nameOrPath: string): Promise<void> {
+    const mime = imageMimeType(nameOrPath)
+    let blob = data instanceof Blob ? data : new Blob([data as BlobPart], { type: mime })
+    if (blob.type !== mime) blob = new Blob([blob], { type: mime })
+    if (mime !== 'image/png') {
+        const bmp = await createImageBitmap(blob)
+        try {
+            const canvas = document.createElement('canvas')
+            canvas.width = bmp.width
+            canvas.height = bmp.height
+            canvas.getContext('2d')?.drawImage(bmp, 0, 0)
+            const png = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
+            canvas.width = 0
+            canvas.height = 0
+            if (!png) throw new Error('PNG로 바꾸지 못했습니다')
+            blob = png
+        } finally {
+            bmp.close()
         }
-        return `data:image/png;base64,${btoa(binary)}`
-    } catch (e) {
-        console.error(`[image-utils] Failed to load reference image: ${filePath}`, e)
-        return null
     }
-}
-
-/** Delete a reference image file. */
-export async function deleteReferenceImage(filePath: string): Promise<void> {
-    try {
-        if (await exists(filePath)) {
-            await remove(filePath)
-        }
-    } catch (e) {
-        console.warn(`[image-utils] Failed to delete reference image: ${filePath}`, e)
-    }
-}
-
-/** Save encoded vibe data to file. Returns file path. */
-export async function saveEncodedVibe(id: string, encodedVibe: string): Promise<string> {
-    const dir = await getReferencesDir()
-    const filePath = await join(dir, `${id}_vibe.bin`)
-    const binary = Uint8Array.from(atob(encodedVibe), c => c.charCodeAt(0))
-    await writeFile(filePath, binary)
-    return filePath
-}
-
-/** Load encoded vibe data from file. Returns raw base64 string or null. */
-export async function loadEncodedVibe(filePath: string): Promise<string | null> {
-    try {
-        if (!(await exists(filePath))) return null
-        const data = await readFile(filePath)
-        const bytes = new Uint8Array(data)
-        let binary = ''
-        const chunkSize = 8192
-        for (let i = 0; i < bytes.length; i += chunkSize) {
-            binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
-        }
-        return btoa(binary)
-    } catch (e) {
-        console.error(`[image-utils] Failed to load encoded vibe: ${filePath}`, e)
-        return null
-    }
+    await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })])
 }
 
 // ============================================

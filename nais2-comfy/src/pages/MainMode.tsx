@@ -1,14 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ImageIcon, ImagePlus, Download, Copy, RotateCcw, Save, Users, FolderOpen, Paintbrush } from 'lucide-react'
+import { ImageIcon, ImagePlus, Download, Copy, RotateCcw, Save, FolderOpen, Maximize2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Tip } from '@/components/ui/tooltip'
 import { useGenerationStore } from '@/stores/generation-store'
-import { useAuthStore } from '@/stores/auth-store'
 import { useSettingsStore } from '@/stores/settings-store'
 import { MetadataDialog } from '@/components/metadata/MetadataDialog'
-import { ImageReferenceDialog } from '@/components/metadata/ImageReferenceDialog'
-import { parseMetadataFromBase64 } from '@/lib/metadata-parser'
-import { generateImage } from '@/services/novelai-api'
+import { regenerateFromImage, upscaleExisting } from '@/lib/comfy-params'
+import { copyImageToClipboard } from '@/lib/image-utils'
 import { toast } from '@/components/ui/use-toast'
 import {
     ContextMenu,
@@ -20,11 +19,10 @@ import {
 import { Command } from '@tauri-apps/plugin-shell'
 import { save } from '@tauri-apps/plugin-dialog'
 import { pictureDir, join } from '@tauri-apps/api/path'
-import { writeFile, mkdir, exists, BaseDirectory } from '@tauri-apps/plugin-fs'
-import { useNavigate } from 'react-router-dom'
-import { useToolsStore } from '@/stores/tools-store'
-import { Wand2 } from 'lucide-react'
-import { InpaintingDialog } from '@/components/tools/InpaintingDialog'
+import { writeFile, mkdir, exists } from '@tauri-apps/plugin-fs'
+
+/** 미리보기 그림에 대해 지금 하고 있는 일 (다시 생성 / 고화질로 다시 그리기) */
+type PreviewAction = 'regenerate' | 'upscale'
 
 export default function MainMode() {
     const { t } = useTranslation()
@@ -39,201 +37,145 @@ export default function MainMode() {
         batchCount,
         currentBatch,
         streamProgress,
-        setSourceImage,
-        setI2IMode,
+        setPreviewImage,
+        setSeed,
+        setPreviewSeed,
     } = useGenerationStore()
-
-    const navigate = useNavigate()
-    const { setActiveImage } = useToolsStore()
+    const upscaleScale = useSettingsStore((s) => s.upscaleScale)
+    const upscaleDenoise = useSettingsStore((s) => s.upscaleDenoise)
 
     const [metadataDialogOpen, setMetadataDialogOpen] = useState(false)
     const [metadataImage, setMetadataImage] = useState<string | undefined>(undefined)
     const [isDragOver, setIsDragOver] = useState(false)
-    const [imageRefDialogOpen, setImageRefDialogOpen] = useState(false)
-    // Inpainting dialog state
-    const [inpaintDialogOpen, setInpaintDialogOpen] = useState(false)
 
-    // Get more store functions for regenerate with metadata
-    const genStore = useGenerationStore()
+    // 다시 생성·고화질로 다시 그리기 진행 상태 (메인 생성의 isGenerating 은 건드리지 않는다)
+    const [busyAction, setBusyAction] = useState<PreviewAction | null>(null)
+    const [actionProgress, setActionProgress] = useState(0)
 
-    // Regenerate with metadata - direct API call without modifying UI
+    /** 지금 미리보기를 생성 요청에 넘길 수 있는 형태로 (보통은 data URL) */
+    const previewSource = async (): Promise<{ dataUrl?: string; bytes?: Uint8Array }> => {
+        if (!previewImage) throw new Error(t('comfy.preview.none', '미리보기 그림이 없습니다'))
+        if (previewImage.startsWith('data:')) return { dataUrl: previewImage }
+        const res = await fetch(previewImage)
+        return { bytes: new Uint8Array(await res.arrayBuffer()) }
+    }
+
+    /**
+     * 결과를 미리보기에 띄운다. 그 사이 메인 생성이 시작됐으면 생성 화면을 덮지 않는다.
+     * seed 를 주면 (다시 생성) 아래 정보 줄에 그 시드를 보여 주고, 누르면 다음 생성에 쓸 수 있다.
+     */
+    const showResult = (imageData: string, newSeed?: number) => {
+        const g = useGenerationStore.getState()
+        if (g.isGenerating) return
+        setPreviewImage(`data:image/png;base64,${imageData}`)
+        setPreviewSeed(newSeed && newSeed !== g.seed ? newSeed : null)
+    }
+
+    // 다시 생성: 이 그림의 생성 정보 그대로, 시드만 새로 뽑아 한 장 더
     const handleRegenerateWithMetadata = async () => {
-        if (!previewImage || isGenerating) return
-
-        const token = useAuthStore.getState().token
-        if (!token) {
-            toast({
-                title: t('toast.tokenRequired.title', '토큰 필요'),
-                variant: 'destructive',
-            })
-            return
-        }
-
+        if (!previewImage || isGenerating || busyAction) return
+        setBusyAction('regenerate')
+        setActionProgress(0)
+        toast({
+            title: t('comfy.regen.startTitle', '같은 설정으로 다시 그리는 중…'),
+            description: t('comfy.regen.startDesc', '이 그림의 생성 정보로 시드만 바꿔 한 장 더 그립니다.'),
+        })
         try {
-            // Parse metadata from current image
-            const metadata = await parseMetadataFromBase64(previewImage)
-            if (!metadata) {
-                toast({
-                    title: t('toast.noMetadata', '메타데이터 없음'),
-                    description: t('toast.noMetadataDesc', '이 이미지에서 메타데이터를 찾을 수 없습니다'),
-                    variant: 'destructive',
-                })
-                return
-            }
-
-            // Set generating state
-            genStore.setIsGenerating(true)
-
-            // Generate random seed
-            const newSeed = Math.floor(Math.random() * 4294967295)
-
-            // Map metadata model name to API model ID
-            // Metadata returns display names like "NovelAI Diffusion V4.5 ..." 
-            // but API needs IDs like "nai-diffusion-4-5-full"
-            const mapModelNameToId = (name?: string): string => {
-                if (!name) return 'nai-diffusion-4-5-full'
-                const lower = name.toLowerCase()
-                if (lower.includes('4.5') || lower.includes('4-5')) {
-                    if (lower.includes('curated')) return 'nai-diffusion-4-5-curated'
-                    return 'nai-diffusion-4-5-full'
-                }
-                if (lower.includes('v4') || lower.includes('4')) {
-                    if (lower.includes('curated')) return 'nai-diffusion-4-curated-preview'
-                    return 'nai-diffusion-4-full'
-                }
-                if (lower.includes('furry')) return 'nai-diffusion-furry-3'
-                if (lower.includes('v3') || lower.includes('3')) return 'nai-diffusion-3'
-                return 'nai-diffusion-4-5-full'
-            }
-
-            // Call API directly with metadata (without modifying UI store)
-            // Use all settings from metadata, only randomize seed
-            const result = await generateImage(token, {
-                prompt: metadata.prompt || '',
-                negative_prompt: metadata.negativePrompt || '',
-                model: mapModelNameToId(metadata.model),
-                width: metadata.width || 832,
-                height: metadata.height || 1216,
-                steps: metadata.steps || 28,
-                cfg_scale: metadata.cfgScale || 5,
-                cfg_rescale: metadata.cfgRescale || 0,
-                sampler: metadata.sampler || 'k_euler',
-                scheduler: metadata.scheduler || 'native',
-                smea: metadata.smea ?? true,
-                smea_dyn: metadata.smeaDyn ?? false,
-                variety: metadata.variety ?? false,
-                seed: newSeed,
-                imageFormat: useSettingsStore.getState().imageFormat,
+            const result = await regenerateFromImage(await previewSource(), {
+                onProgress: (p) => setActionProgress(p),
             })
-
             if (result.success && result.imageData) {
-                // Update preview with new image
-                const { imageFormat } = useSettingsStore.getState()
-                const mimeType = imageFormat === 'webp' ? 'image/webp' : 'image/png'
-                const fileExt = imageFormat === 'webp' ? 'webp' : 'png'
-                genStore.setPreviewImage(`data:${mimeType};base64,${result.imageData}`)
-
-                // Save to disk if autoSave is enabled
-                const { savePath, autoSave, useAbsolutePath } = useSettingsStore.getState()
-                if (autoSave) {
-                    try {
-                        const binaryString = atob(result.imageData)
-                        const bytes = new Uint8Array(binaryString.length)
-                        for (let j = 0; j < binaryString.length; j++) {
-                            bytes[j] = binaryString.charCodeAt(j)
-                        }
-
-                        const fileName = `NAIS_${Date.now()}.${fileExt}`
-                        const outputDir = savePath || 'NAIS_Output'
-
-                        let fullPath: string
-
-                        if (useAbsolutePath) {
-                            // Save to absolute path directly
-                            const dirExists = await exists(outputDir)
-                            if (!dirExists) {
-                                await mkdir(outputDir, { recursive: true })
-                            }
-                            fullPath = await join(outputDir, fileName)
-                            await writeFile(fullPath, bytes)
-                        } else {
-                            // Save relative to Pictures directory
-                            const dirExists = await exists(outputDir, { baseDir: BaseDirectory.Picture })
-                            if (!dirExists) {
-                                await mkdir(outputDir, { baseDir: BaseDirectory.Picture })
-                            }
-                            await writeFile(`${outputDir}/${fileName}`, bytes, { baseDir: BaseDirectory.Picture })
-                            const picPath = await pictureDir()
-                            fullPath = await join(picPath, outputDir, fileName)
-                        }
-
-                        // Dispatch event for instant history update
-                        try {
-                            window.dispatchEvent(new CustomEvent('newImageGenerated', {
-                                detail: { path: fullPath, data: `data:${mimeType};base64,${result.imageData}` }
-                            }))
-                        } catch (e) {
-                            console.warn('Failed to dispatch newImageGenerated event:', e)
-                        }
-                    } catch (e) {
-                        console.warn('Failed to save regenerated image:', e)
-                    }
-                }
-
+                showResult(result.imageData, result.seed)
                 toast({
                     title: t('toast.regenerated', '재생성 완료'),
+                    description: t('comfy.regen.doneDesc', '새 시드 {{seed}} · 기록 패널에 추가했습니다', { seed: result.seed }),
                     variant: 'success',
                 })
+            } else if (result.interrupted) {
+                toast({ title: t('comfy.regen.stopped', '다시 생성을 멈췄습니다') })
             } else {
                 toast({
-                    title: t('toast.generateFailed', '생성 실패'),
+                    title: t('comfy.regen.failed', '다시 생성하지 못했습니다'),
                     description: result.error,
                     variant: 'destructive',
                 })
             }
         } catch (e) {
             console.error('Regenerate failed:', e)
+            toast({ title: t('comfy.regen.failed', '다시 생성하지 못했습니다'), description: (e as Error)?.message, variant: 'destructive' })
         } finally {
-            genStore.setIsGenerating(false)
+            setBusyAction(null)
+            setActionProgress(0)
         }
     }
 
-
+    // 고화질로 다시 그리기: 그림 자체에서 시작하므로 시드가 필요 없다. 원본은 그대로 두고 새 파일로 저장
+    const handleUpscale = async () => {
+        if (!previewImage || isGenerating || busyAction) return
+        setBusyAction('upscale')
+        setActionProgress(0)
+        toast({
+            title: t('comfy.upscale.startTitle', '고화질로 다시 그리는 중…'),
+            description: t('comfy.upscale.startDesc', '원본은 그대로 두고 새 파일로 저장합니다 ({{scale}}배, 다듬기 강도 {{denoise}})', { scale: upscaleScale, denoise: upscaleDenoise }),
+        })
+        try {
+            const result = await upscaleExisting(await previewSource(), {
+                onProgress: (p) => setActionProgress(p),
+            })
+            if (result.success && result.imageData) {
+                showResult(result.imageData)
+                const fileName = result.saved?.path.split(/[\\/]/).pop() ?? ''
+                toast({
+                    title: t('comfy.upscale.done', '고화질 그림을 저장했습니다'),
+                    description: result.saved?.saved
+                        ? t('comfy.upscale.doneDesc', '{{file}} · {{width}}×{{height}} · 기록 패널에 추가했습니다', { file: fileName, width: result.width, height: result.height })
+                        : t('comfy.upscale.doneMemory', '{{width}}×{{height}} · 자동 저장이 꺼져 있어 기록 패널에만 있습니다', { width: result.width, height: result.height }),
+                    variant: 'success',
+                })
+            } else if (result.interrupted) {
+                toast({ title: t('comfy.upscale.stopped', '고화질로 다시 그리기를 멈췄습니다') })
+            } else {
+                toast({
+                    title: t('comfy.upscale.failed', '고화질로 다시 그리지 못했습니다'),
+                    description: result.error,
+                    variant: 'destructive',
+                })
+            }
+        } catch (e) {
+            console.error('Upscale failed:', e)
+            toast({ title: t('comfy.upscale.failed', '고화질로 다시 그리지 못했습니다'), description: (e as Error)?.message, variant: 'destructive' })
+        } finally {
+            setBusyAction(null)
+            setActionProgress(0)
+        }
+    }
 
     const handleCopy = async () => {
         if (!previewImage) return
         try {
             const response = await fetch(previewImage)
             const blob = await response.blob()
-            await navigator.clipboard.write([
-                new ClipboardItem({ [blob.type]: blob })
-            ])
+            await copyImageToClipboard(blob, blob.type === 'image/jpeg' ? 'preview.jpg' : blob.type === 'image/webp' ? 'preview.webp' : 'preview.png')
+            toast({ title: t('actions.copied', '복사 완료'), variant: 'success' })
         } catch (e) {
             console.error('Copy failed', e)
+            toast({ title: t('actions.copyFailed', '복사 실패'), variant: 'destructive' })
         }
     }
 
-    // Save As with native Windows dialog
+    // Save As with native Windows dialog (ComfyUI 결과는 PNG)
     const handleSaveAs = async () => {
         if (!previewImage) return
         try {
-            const { imageFormat } = useSettingsStore.getState()
-            const fileExt = imageFormat === 'webp' ? 'webp' : 'png'
-            const filterName = imageFormat === 'webp' ? 'WebP Image' : 'PNG Image'
             const filePath = await save({
-                defaultPath: `NAIS_${Date.now()}.${fileExt}`,
-                filters: [{ name: filterName, extensions: [fileExt] }],
+                defaultPath: `NAIS_${Date.now()}.png`,
+                filters: [{ name: t('comfy.file.imageFilter', '{{ext}} 그림', { ext: 'PNG' }), extensions: ['png'] }],
             })
 
             if (filePath) {
-                const base64Data = previewImage.split(',')[1]
-                const binaryString = atob(base64Data)
-                const bytes = new Uint8Array(binaryString.length)
-                for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i)
-                }
-
-                await writeFile(filePath, bytes)
+                const response = await fetch(previewImage)
+                const bytes = new Uint8Array(await response.arrayBuffer())
+                await writeFile(/\.png$/i.test(filePath) ? filePath : `${filePath}.png`, bytes)
                 toast({
                     title: t('toast.saved', '저장 완료'),
                     variant: 'success',
@@ -251,16 +193,11 @@ export default function MainMode() {
     // Open folder containing saved images
     const handleOpenFolder = async () => {
         try {
+            // 저장할 때와 같은 규칙 (절대 경로를 정했으면 거기, 아니면 사진 폴더 아래)
             const { savePath, useAbsolutePath } = useSettingsStore.getState()
-            const finalSavePath = savePath || 'NAIS_Output'
-
-            let folderPath: string
-            if (useAbsolutePath) {
-                folderPath = finalSavePath
-            } else {
-                const picPath = await pictureDir()
-                folderPath = await join(picPath, finalSavePath)
-            }
+            const folderPath = useAbsolutePath && savePath
+                ? savePath
+                : await join(await pictureDir(), savePath || 'NAIS_Output')
 
             const dirExists = await exists(folderPath)
             if (!dirExists) {
@@ -271,33 +208,6 @@ export default function MainMode() {
             await Command.create('explorer', [folderPath]).execute()
         } catch (e) {
             console.error('Failed to open folder:', e)
-        }
-    }
-
-    const handleOpenSmartTools = () => {
-        if (previewImage) {
-            setActiveImage(previewImage)
-            navigate('/tools')
-        }
-    }
-
-    // Inpainting: Open dialog directly (source/mode set when mask is saved)
-    const handleInpaint = () => {
-        if (!previewImage) return
-        setInpaintDialogOpen(true)
-    }
-
-    // I2I: Set source and stay on page (already in main mode)
-    const handleI2I = () => {
-        if (!previewImage) return
-        setSourceImage(previewImage)
-        setI2IMode('i2i')
-    }
-
-    // Image Reference popup
-    const handleAddAsReference = () => {
-        if (previewImage) {
-            setImageRefDialogOpen(true)
         }
     }
 
@@ -367,7 +277,7 @@ export default function MainMode() {
     const [elapsedTime, setElapsedTime] = useState(0)
 
     useEffect(() => {
-        let interval: any
+        let interval: ReturnType<typeof setInterval> | undefined
         if (isGenerating) {
             const start = Date.now()
             setElapsedTime(0)
@@ -435,33 +345,62 @@ export default function MainMode() {
                                     alt="Generated preview"
                                     className="w-full h-full object-contain"
                                 />
-                                {/* Image Actions Overlay (Visible on hover) */}
-                                <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                    <Button
-                                        size="icon"
-                                        variant="secondary"
-                                        className="rounded-full h-10 w-10 shadow-lg backdrop-blur-md bg-black/30 border border-white/10 hover:bg-black/50 text-white"
-                                        onClick={handleRegenerateWithMetadata}
-                                        disabled={isGenerating}
+                                {/* Image Actions Overlay (Visible on hover; 작업 중에는 계속 보인다) */}
+                                <div className={`absolute top-4 right-4 flex gap-2 transition-opacity duration-300 ${busyAction ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                                    <Tip content={t('comfy.regen.tip', '다시 생성 — 이 그림의 설정 그대로 시드만 바꿔 한 장 더')}>
+                                        <Button
+                                            size="icon"
+                                            variant="secondary"
+                                            className="rounded-full h-10 w-10 shadow-lg backdrop-blur-md bg-black/30 border border-white/10 hover:bg-black/50 text-white"
+                                            onClick={handleRegenerateWithMetadata}
+                                            disabled={isGenerating || !!busyAction}
+                                        >
+                                            {busyAction === 'regenerate'
+                                                ? <Loader2 className="h-5 w-5 animate-spin" />
+                                                : <RotateCcw className="h-5 w-5" />}
+                                        </Button>
+                                    </Tip>
+                                    <Tip
+                                        side="bottom"
+                                        content={
+                                            <span className="block max-w-[280px] whitespace-normal leading-relaxed">
+                                                <span className="block font-semibold">{t('comfy.upscale.action', '고화질로 다시 그리기')}</span>
+                                                {t('comfy.upscale.tip', '이 그림을 {{scale}}배로 키운 뒤 다시 다듬어 새 파일로 저장합니다. 그림 자체에서 시작하므로 시드를 고정하지 않아도 됩니다. 크기와 다듬기 강도({{denoise}})는 설정 → ComfyUI에서 바꿀 수 있습니다.', { scale: upscaleScale, denoise: upscaleDenoise })}
+                                            </span>
+                                        }
                                     >
-                                        <RotateCcw className="h-5 w-5" />
-                                    </Button>
-                                    <Button
-                                        size="icon"
-                                        variant="secondary"
-                                        className="rounded-full h-10 w-10 shadow-lg backdrop-blur-md bg-black/30 border border-white/10 hover:bg-black/50 text-white"
-                                        onClick={handleCopy}
-                                    >
-                                        <Copy className="h-5 w-5" />
-                                    </Button>
-                                    <Button
-                                        size="icon"
-                                        variant="secondary"
-                                        className="rounded-full h-10 w-10 shadow-lg backdrop-blur-md bg-black/30 border border-white/10 hover:bg-black/50 text-white"
-                                        onClick={handleSaveAs}
-                                    >
-                                        <Download className="h-5 w-5" />
-                                    </Button>
+                                        <Button
+                                            size="icon"
+                                            variant="secondary"
+                                            className="rounded-full h-10 w-10 shadow-lg backdrop-blur-md bg-black/30 border border-white/10 hover:bg-black/50 text-white"
+                                            onClick={handleUpscale}
+                                            disabled={isGenerating || !!busyAction}
+                                        >
+                                            {busyAction === 'upscale'
+                                                ? <Loader2 className="h-5 w-5 animate-spin" />
+                                                : <Maximize2 className="h-5 w-5" />}
+                                        </Button>
+                                    </Tip>
+                                    <Tip content={t('actions.copy', '복사')}>
+                                        <Button
+                                            size="icon"
+                                            variant="secondary"
+                                            className="rounded-full h-10 w-10 shadow-lg backdrop-blur-md bg-black/30 border border-white/10 hover:bg-black/50 text-white"
+                                            onClick={handleCopy}
+                                        >
+                                            <Copy className="h-5 w-5" />
+                                        </Button>
+                                    </Tip>
+                                    <Tip content={t('actions.saveAs', '다른 이름으로 저장')}>
+                                        <Button
+                                            size="icon"
+                                            variant="secondary"
+                                            className="rounded-full h-10 w-10 shadow-lg backdrop-blur-md bg-black/30 border border-white/10 hover:bg-black/50 text-white"
+                                            onClick={handleSaveAs}
+                                        >
+                                            <Download className="h-5 w-5" />
+                                        </Button>
+                                    </Tip>
                                 </div>
                             </div>
                         </ContextMenuTrigger>
@@ -474,28 +413,21 @@ export default function MainMode() {
                                 <Copy className="h-4 w-4 mr-2" />
                                 {t('actions.copy', '복사')}
                             </ContextMenuItem>
-                            <ContextMenuItem onClick={handleRegenerateWithMetadata} disabled={isGenerating}>
+                            <ContextMenuItem onClick={handleRegenerateWithMetadata} disabled={isGenerating || !!busyAction}>
                                 <RotateCcw className="h-4 w-4 mr-2" />
                                 {t('actions.regenerate', '재생성')}
                             </ContextMenuItem>
-                            <ContextMenuItem onClick={handleOpenSmartTools}>
-                                <Wand2 className="h-4 w-4 mr-2" />
-                                {t('smartTools.title', '스마트 툴')}
+                            {/* 스마트 툴·인페인팅·I2I 자리: 고화질로 다시 그리기 */}
+                            <ContextMenuItem onClick={handleUpscale} disabled={isGenerating || !!busyAction} className="items-start">
+                                <Maximize2 className="h-4 w-4 mr-2 mt-0.5" />
+                                <span className="flex flex-col">
+                                    <span>{t('comfy.upscale.action', '고화질로 다시 그리기')}</span>
+                                    <span className="text-[10px] leading-tight text-muted-foreground">
+                                        {t('comfy.upscale.menuHint', '시드 없이 이 그림에서 시작 · 새 파일로 저장')}
+                                    </span>
+                                </span>
                             </ContextMenuItem>
                             <ContextMenuSeparator />
-                            <ContextMenuItem onClick={handleInpaint}>
-                                <Paintbrush className="h-4 w-4 mr-2" />
-                                {t('tools.inpainting.title', '인페인팅')}
-                            </ContextMenuItem>
-                            <ContextMenuItem onClick={handleI2I}>
-                                <ImageIcon className="h-4 w-4 mr-2" />
-                                {t('tools.i2i.title', 'Image to Image')}
-                            </ContextMenuItem>
-                            <ContextMenuSeparator />
-                            <ContextMenuItem onClick={handleAddAsReference}>
-                                <Users className="h-4 w-4 mr-2" />
-                                {t('actions.addAsRef', '이미지 참조')}
-                            </ContextMenuItem>
                             <ContextMenuItem onClick={handleOpenFolder}>
                                 <FolderOpen className="h-4 w-4 mr-2" />
                                 {t('actions.openFolder', '폴더 열기')}
@@ -574,6 +506,29 @@ export default function MainMode() {
                 </div>
             )}
 
+            {/* 다시 생성·고화질로 다시 그리기 진행률 (메인 생성 진행률과 같은 모양) */}
+            {!isGenerating && busyAction && (
+                <div className="absolute bottom-20 left-1/2 -translate-x-1/2 px-6 py-2.5 bg-black/40 backdrop-blur-md rounded-full border border-white/10 shadow-xl flex items-center gap-4 text-sm text-white/90 transition-all hover:bg-black/50">
+                    <div className="h-4 w-4 rounded-full border-2 border-primary/50 border-t-primary animate-spin" />
+                    <span className="text-xs font-medium text-emerald-400 leading-none">
+                        {busyAction === 'upscale'
+                            ? t('comfy.upscale.running', '고화질로 다시 그리는 중…')
+                            : t('comfy.regen.running', '같은 설정으로 다시 그리는 중…')}
+                    </span>
+                    {actionProgress > 0 && actionProgress < 100 && (
+                        <div className="flex items-center gap-2 ml-2">
+                            <div className="w-32 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-gradient-to-r from-emerald-400 to-primary transition-[width] duration-300 ease-out"
+                                    style={{ width: `${actionProgress}%` }}
+                                />
+                            </div>
+                            <span className="text-[10px] font-mono text-emerald-400">{actionProgress}%</span>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Bottom Info Bar Overlay */}
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 px-6 py-2.5 bg-black/40 backdrop-blur-md rounded-full border border-white/10 shadow-xl flex items-center gap-6 text-sm text-white/90 transition-all hover:bg-black/50">
                 <span className="flex items-center gap-2">
@@ -588,8 +543,8 @@ export default function MainMode() {
                         if (targetSeed) {
                             // If previewing, apply the seed
                             if (previewSeed) {
-                                genStore.setSeed(previewSeed)
-                                genStore.setPreviewSeed(null) // Exit preview mode
+                                setSeed(previewSeed)
+                                setPreviewSeed(null) // Exit preview mode
                                 toast({ title: t('toast.seedApplied', '시드 적용됨'), variant: 'success' })
                             } else {
                                 // Normal behavior: Copy to clipboard
@@ -612,20 +567,6 @@ export default function MainMode() {
                     if (!open) setMetadataImage(undefined)
                 }}
                 initialImage={metadataImage}
-            />
-
-            {/* Image Reference Dialog */}
-            <ImageReferenceDialog
-                open={imageRefDialogOpen}
-                onOpenChange={setImageRefDialogOpen}
-                imageBase64={previewImage || null}
-            />
-
-            {/* Inpainting Dialog */}
-            <InpaintingDialog
-                open={inpaintDialogOpen}
-                onOpenChange={setInpaintDialogOpen}
-                sourceImage={previewImage}
             />
         </div>
     )

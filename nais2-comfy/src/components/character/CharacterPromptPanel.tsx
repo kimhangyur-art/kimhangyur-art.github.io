@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, MouseEvent } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
     X,
@@ -7,12 +7,11 @@ import {
     Users,
     ChevronDown,
     ChevronUp,
-    MapPin,
+    Info,
     Eye,
     EyeOff,
     Copy,
     User,
-    SlidersHorizontal,
     Pencil,
     Search,
     Folder,
@@ -41,7 +40,7 @@ import {
     ContextMenuSubContent,
     ContextMenuSeparator,
 } from '@/components/ui/context-menu'
-import { useCharacterPromptStore, CHARACTER_COLORS, CharacterPrompt, FOLDER_COLORS } from '@/stores/character-prompt-store'
+import { useCharacterPromptStore, CharacterPrompt, FOLDER_COLORS } from '@/stores/character-prompt-store'
 import { useSettingsStore } from '@/stores/settings-store'
 import { Tip } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
@@ -77,10 +76,7 @@ export function CharacterPromptPanel({ open, onOpenChange }: CharacterPromptPane
         addCharacter,
         updateCharacter,
         removeCharacter,
-        setPosition,
         toggleEnabled,
-        positionEnabled,
-        setPositionEnabled,
         addGroup,
         updateGroup,
         deleteGroup,
@@ -91,7 +87,6 @@ export function CharacterPromptPanel({ open, onOpenChange }: CharacterPromptPane
     } = useCharacterPromptStore()
 
     const [expandedId, setExpandedId] = useState<string | null>(null)
-    const [positionDialogOpen, setPositionDialogOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
     const [editingGroupName, setEditingGroupName] = useState('')
@@ -271,31 +266,24 @@ export function CharacterPromptPanel({ open, onOpenChange }: CharacterPromptPane
                         )}
                     </div>
                     <div className="flex items-center gap-1">
-                        {/* 위치 설정 다이얼로그 (활성화 시에만) - 왼쪽에 배치 */}
-                        {positionEnabled && (
-                            <Tip content={t('characterPanel.positionTitle', '이미지 내 캐릭터 위치 지정')}>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7"
-                                    onClick={() => setPositionDialogOpen(true)}
-                                >
-                                    <SlidersHorizontal className="h-3.5 w-3.5" />
-                                </Button>
-                            </Tip>
-                        )}
-                        {/* 위치 활성화 토글 */}
-                        <Tip content={t('characterPanel.positionDesc', '캐릭터 위치 기능 활성화')}>
+                        {/* 사용법 안내 (예전 위치 지정 버튼 자리. ComfyUI는 캐릭터 위치를 쓰지 않는다) */}
+                        <Tip
+                            side="bottom"
+                            content={
+                                <span className="block max-w-[260px] whitespace-normal leading-relaxed">
+                                    {t(
+                                        'comfy.character.help',
+                                        '캐릭터마다 외형 태그와 네거티브를 따로 적어 두고 눈 아이콘으로 켜고 끌 수 있습니다. 켜 둔 캐릭터만 메인 프롬프트 뒤에 쉼표로 이어 붙어서 ComfyUI로 갑니다.'
+                                    )}
+                                </span>
+                            }
+                        >
                             <Button
-                                variant={positionEnabled ? "default" : "ghost"}
+                                variant="ghost"
                                 size="icon"
-                                className={cn(
-                                    "h-7 w-7",
-                                    positionEnabled && "bg-primary text-primary-foreground"
-                                )}
-                                onClick={() => setPositionEnabled(!positionEnabled)}
+                                className="h-7 w-7 text-muted-foreground"
                             >
-                                <MapPin className="h-3.5 w-3.5" />
+                                <Info className="h-3.5 w-3.5" />
                             </Button>
                         </Tip>
                         <Tip content={t('characterPanel.addDesc', '새 캐릭터 프롬프트 추가')}>
@@ -327,6 +315,11 @@ export function CharacterPromptPanel({ open, onOpenChange }: CharacterPromptPane
                             <X className="h-4 w-4" />
                         </Button>
                     </div>
+                </div>
+
+                {/* ComfyUI 안내 */}
+                <div className="px-3 py-1.5 border-b border-border/30 shrink-0 text-[11px] leading-snug text-muted-foreground">
+                    {t('comfy.character.note', 'ComfyUI에서는 캐릭터 프롬프트가 메인 프롬프트 뒤에 이어 붙습니다 (위치 지정은 쓰지 않음)')}
                 </div>
 
                 {/* Search */}
@@ -472,7 +465,6 @@ export function CharacterPromptPanel({ open, onOpenChange }: CharacterPromptPane
                                                                     onDuplicate={() => handleDuplicate(char)}
                                                                     onSaveAsPreset={() => handleSaveAsPreset(char)}
                                                                     onMoveToGroup={moveCharacterToGroup}
-                                                                    positionEnabled={positionEnabled}
                                                                     groups={groups}
                                                                 />
                                                             )
@@ -515,7 +507,6 @@ export function CharacterPromptPanel({ open, onOpenChange }: CharacterPromptPane
                                                                 onDuplicate={() => handleDuplicate(char)}
                                                                 onSaveAsPreset={() => handleSaveAsPreset(char)}
                                                                 onMoveToGroup={moveCharacterToGroup}
-                                                                positionEnabled={positionEnabled}
                                                                 groups={groups}
                                                             />
                                                         )
@@ -547,14 +538,6 @@ export function CharacterPromptPanel({ open, onOpenChange }: CharacterPromptPane
                 </ScrollArea>
                 </DndContext>
             </div>
-
-            {/* Position Dialog */}
-            <PositionDialog
-                open={positionDialogOpen}
-                onOpenChange={setPositionDialogOpen}
-                characters={characters}
-                onPositionChange={setPosition}
-            />
         </>
     )
 }
@@ -660,7 +643,6 @@ interface CharacterCardProps {
     onDuplicate: () => void
     onSaveAsPreset: () => void
     onMoveToGroup: (characterId: string, groupId: string | undefined) => void
-    positionEnabled: boolean
     groups: { id: string; name: string; collapsed: boolean }[]
     dragHandleProps?: React.HTMLAttributes<HTMLElement>
 }
@@ -676,11 +658,9 @@ function CharacterCard({
     onDuplicate,
     onSaveAsPreset,
     onMoveToGroup,
-    positionEnabled,
     groups,
     dragHandleProps,
 }: CharacterCardProps) {
-    const color = CHARACTER_COLORS[index % CHARACTER_COLORS.length]
     const { t } = useTranslation()
     const promptFontSize = useSettingsStore(state => state.promptFontSize)
 
@@ -690,7 +670,13 @@ function CharacterCard({
 
     const [renameDialogOpen, setRenameDialogOpen] = useState(false)
     const [newName, setNewName] = useState(character.name || '')
-    const debounceRef = useRef<NodeJS.Timeout | null>(null)
+
+    // 프롬프트·네거티브 저장 타이머를 따로 둔다 (하나를 같이 쓰면 둘을 연달아 고칠 때 앞의 것이 사라졌다)
+    const promptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const negativeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const pendingRef = useRef<{ prompt?: string; negative?: string }>({})
+    const onUpdateRef = useRef(onUpdate)
+    onUpdateRef.current = onUpdate
 
     // 외부에서 캐릭터가 변경되면 로컬 상태 동기화
     useEffect(() => {
@@ -703,18 +689,26 @@ function CharacterCard({
 
     // 디바운스된 저장
     const savePrompt = useCallback((value: string) => {
-        if (debounceRef.current) clearTimeout(debounceRef.current)
-        debounceRef.current = setTimeout(() => {
-            onUpdate({ prompt: value })
+        pendingRef.current.prompt = value
+        if (promptTimerRef.current) clearTimeout(promptTimerRef.current)
+        promptTimerRef.current = setTimeout(() => {
+            promptTimerRef.current = null
+            const v = pendingRef.current.prompt
+            delete pendingRef.current.prompt
+            if (v !== undefined) onUpdateRef.current({ prompt: v })
         }, 500)
-    }, [onUpdate])
+    }, [])
 
     const saveNegative = useCallback((value: string) => {
-        if (debounceRef.current) clearTimeout(debounceRef.current)
-        debounceRef.current = setTimeout(() => {
-            onUpdate({ negative: value })
+        pendingRef.current.negative = value
+        if (negativeTimerRef.current) clearTimeout(negativeTimerRef.current)
+        negativeTimerRef.current = setTimeout(() => {
+            negativeTimerRef.current = null
+            const v = pendingRef.current.negative
+            delete pendingRef.current.negative
+            if (v !== undefined) onUpdateRef.current({ negative: v })
         }, 500)
-    }, [onUpdate])
+    }, [])
 
     const handlePromptChange = useCallback((value: string) => {
         setLocalPrompt(value)
@@ -726,11 +720,17 @@ function CharacterCard({
         saveNegative(value)
     }, [saveNegative])
 
-    // 컴포넌트 언마운트 시 저장
+    // 컴포넌트 언마운트 시 아직 저장 안 된 입력을 바로 저장 (패널을 닫아도 마지막 입력이 남게)
     useEffect(() => {
         return () => {
-            if (debounceRef.current) {
-                clearTimeout(debounceRef.current)
+            if (promptTimerRef.current) clearTimeout(promptTimerRef.current)
+            if (negativeTimerRef.current) clearTimeout(negativeTimerRef.current)
+            promptTimerRef.current = null
+            negativeTimerRef.current = null
+            const pending = pendingRef.current
+            pendingRef.current = {}
+            if (pending.prompt !== undefined || pending.negative !== undefined) {
+                onUpdateRef.current(pending)
             }
         }
     }, [])
@@ -756,16 +756,8 @@ function CharacterCard({
                                 <User className="h-4 w-4 text-primary" />
                             </div>
 
-                            {/* 캐릭터 번호 뱃지 - 위치 활성화시 색상 표시 */}
-                            <div
-                                className={cn(
-                                    "w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-semibold shrink-0 transition-colors",
-                                    positionEnabled
-                                        ? "text-white"
-                                        : "bg-muted-foreground/20 text-muted-foreground"
-                                )}
-                                style={positionEnabled ? { backgroundColor: color } : undefined}
-                            >
+                            {/* 캐릭터 번호 뱃지 (프롬프트에 이어 붙는 순서) */}
+                            <div className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-semibold shrink-0 bg-muted-foreground/20 text-muted-foreground">
                                 {index + 1}
                             </div>
 
@@ -932,139 +924,5 @@ function CharacterCard({
                 </DialogContent>
             </Dialog>
         </>
-    )
-}
-
-// --- Position Dialog ---
-interface PositionDialogProps {
-    open: boolean
-    onOpenChange: (open: boolean) => void
-    characters: CharacterPrompt[]
-    onPositionChange: (id: string, x: number, y: number) => void
-}
-
-function PositionDialog({ open, onOpenChange, characters, onPositionChange }: PositionDialogProps) {
-    const { t } = useTranslation()
-    const gridRef = useRef<HTMLDivElement>(null)
-    const [dragging, setDragging] = useState<string | null>(null)
-    const [selectedId, setSelectedId] = useState<string | null>(null)
-
-    const handleMouseDown = (e: MouseEvent, id: string) => {
-        e.preventDefault()
-        setDragging(id)
-        setSelectedId(id)
-    }
-
-    const handleMouseMove = (e: MouseEvent) => {
-        if (!dragging || !gridRef.current) return
-        const rect = gridRef.current.getBoundingClientRect()
-        const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-        const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height))
-        onPositionChange(dragging, x, y)
-    }
-
-    const handleMouseUp = () => {
-        setDragging(null)
-    }
-
-    useEffect(() => {
-        const handleGlobalMouseUp = () => setDragging(null)
-        window.addEventListener('mouseup', handleGlobalMouseUp)
-        return () => window.removeEventListener('mouseup', handleGlobalMouseUp)
-    }, [])
-
-    const zones = [
-        { label: '↖', x: 0.17, y: 0.15 },
-        { label: '↑', x: 0.5, y: 0.15 },
-        { label: '↗', x: 0.83, y: 0.15 },
-        { label: '←', x: 0.17, y: 0.5 },
-        { label: '●', x: 0.5, y: 0.5 },
-        { label: '→', x: 0.83, y: 0.5 },
-        { label: '↙', x: 0.17, y: 0.85 },
-        { label: '↓', x: 0.5, y: 0.85 },
-        { label: '↘', x: 0.83, y: 0.85 },
-    ]
-
-    const enabledCharacters = characters.filter(c => c.enabled)
-
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <MapPin className="h-5 w-5" />
-                        {t('characterPanel.positionTitle', '캐릭터 위치 지정')}
-                    </DialogTitle>
-                </DialogHeader>
-
-                <div
-                    ref={gridRef}
-                    className="relative w-full aspect-[3/4] bg-muted/30 rounded-lg border cursor-crosshair select-none overflow-hidden shadow-inner"
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseUp}
-                >
-                    {/* Grid lines */}
-                    <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none">
-                        {[...Array(9)].map((_, i) => (
-                            <div key={i} className="border border-border/20" />
-                        ))}
-                    </div>
-
-                    {/* Zone labels */}
-                    {zones.map((zone, i) => (
-                        <div
-                            key={i}
-                            className="absolute text-lg text-muted-foreground/30 pointer-events-none select-none"
-                            style={{
-                                left: `${zone.x * 100}%`,
-                                top: `${zone.y * 100}%`,
-                                transform: 'translate(-50%, -50%)'
-                            }}
-                        >
-                            {zone.label}
-                        </div>
-                    ))}
-
-                    {/* Character markers */}
-                    {enabledCharacters.map((char) => {
-                        const colorIndex = characters.findIndex(c => c.id === char.id)
-                        return (
-                            <div
-                                key={char.id}
-                                className={cn(
-                                    "absolute w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold cursor-grab active:cursor-grabbing shadow-lg transition-transform",
-                                    selectedId === char.id && "ring-2 ring-white ring-offset-2 ring-offset-black/50 scale-110 z-10",
-                                    dragging === char.id && "scale-125 z-20"
-                                )}
-                                style={{
-                                    left: `${char.position.x * 100}%`,
-                                    top: `${char.position.y * 100}%`,
-                                    transform: 'translate(-50%, -50%)',
-                                    backgroundColor: CHARACTER_COLORS[colorIndex % CHARACTER_COLORS.length],
-                                }}
-                                onMouseDown={(e) => handleMouseDown(e, char.id)}
-                            >
-                                {colorIndex + 1}
-                            </div>
-                        )
-                    })}
-
-                    {/* Empty state */}
-                    {enabledCharacters.length === 0 && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="text-muted-foreground text-sm text-center">
-                                <Users className="w-8 h-8 opacity-30 mx-auto mb-2" />
-                                <p>{t('characterPanel.noActiveCharacters', '활성화된 캐릭터가 없습니다')}</p>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                <p className="text-xs text-muted-foreground text-center">
-                    {t('characterPanel.positionHelp', '캐릭터를 드래그하여 위치를 지정하세요')}
-                </p>
-            </DialogContent>
-        </Dialog>
     )
 }
