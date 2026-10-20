@@ -1,26 +1,12 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { FragmentPromptDialog } from '@/components/fragments/FragmentPromptDialog'
-import { SourceImagePanel } from '@/components/layout/SourceImagePanel'
-import { CharacterSettingsDialog } from '@/components/character/CharacterSettingsDialog'
 import { CharacterPromptPanel } from '@/components/character/CharacterPromptPanel'
-import { PromptGeneratorDialog } from '@/components/prompt/PromptGeneratorDialog'
 import { AutocompleteTextarea } from '@/components/ui/AutocompleteTextarea'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
-import { Slider } from '@/components/ui/slider'
 import Counter from '@/components/ui/counter'
 import { SHORTCUT_EVENTS } from '@/hooks/useShortcuts'
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select'
 import {
     Dialog,
     DialogContent,
@@ -31,43 +17,38 @@ import {
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { Tip } from '@/components/ui/tooltip'
-import { generateRandomSeed } from '@/lib/utils'
 import {
     ImagePlus,
-    Dice5,
-    Lock,
-    Unlock,
     SlidersHorizontal,
-    Cpu,
     Film,
     Puzzle,
     Users,
+    Layers,
+    Shuffle,
     ChevronDown,
     ChevronUp,
 } from 'lucide-react'
-import GeminiIcon from '@/assets/gemini-color.svg'
-import { useGenerationStore, AVAILABLE_MODELS } from '@/stores/generation-store'
+import { useGenerationStore } from '@/stores/generation-store'
 import { useSceneStore } from '@/stores/scene-store'
 import { useSettingsStore } from '@/stores/settings-store'
 import { useCharacterPromptStore } from '@/stores/character-prompt-store'
-import { ResolutionSelector } from '@/components/ui/ResolutionSelector'
+import { useVariationStore } from '@/stores/variation-store'
+import { ParamsPanel } from '@/components/comfy/ParamsPanel'
+import { LoraDialog, useEnabledLoraCount } from '@/components/comfy/LoraDialog'
 
-const SAMPLERS = [
-    'k_euler',
-    'k_euler_ancestral',
-    'k_dpmpp_2s_ancestral',
-    'k_dpmpp_2m',
-    'k_dpmpp_2m_sde',
-    'k_dpmpp_sde',
-    'ddim',
-]
+type PanelMode = 'main' | 'scene' | 'variation'
 
-const SCHEDULERS = ['native', 'karras', 'exponential', 'polyexponential']
+const Spinner = () => (
+    <div className="mr-2 h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+)
 
 export function PromptPanel() {
     const { t } = useTranslation()
     const location = useLocation()
+    const navigate = useNavigate()
     const isSceneMode = location.pathname.startsWith('/scenes')
+    const isVariationMode = location.pathname.startsWith('/variations')
+    const mode: PanelMode = isSceneMode ? 'scene' : isVariationMode ? 'variation' : 'main'
 
     // Zustand 선택적 구독 - sceneStore
     const activePresetId = useSceneStore(state => state.activePresetId)
@@ -81,27 +62,21 @@ export function PromptPanel() {
 
     const sceneQueueCount = activePresetId ? getTotalQueueCount(activePresetId) : 0
 
+    // Zustand 선택적 구독 - variationStore (변형 모드)
+    const variationRunning = useVariationStore(state => state.isRunning)
+    const variationCancelling = useVariationStore(state => state.isCancelling)
+    const variationTotal = useVariationStore(state => state.totalJobs)
+    const variationDone = useVariationStore(state => state.doneJobs)
+    const variationPlanned = useVariationStore(state => state.plannedCount())
+
     // Zustand 선택적 구독 - generationStore (상태)
     const basePrompt = useGenerationStore(state => state.basePrompt)
     const additionalPrompt = useGenerationStore(state => state.additionalPrompt)
     const detailPrompt = useGenerationStore(state => state.detailPrompt)
     const negativePrompt = useGenerationStore(state => state.negativePrompt)
-    const seed = useGenerationStore(state => state.seed)
-    const seedLocked = useGenerationStore(state => state.seedLocked)
-    const selectedResolution = useGenerationStore(state => state.selectedResolution)
     const isGenerating = useGenerationStore(state => state.isGenerating)
     const isCancelled = useGenerationStore(state => state.isCancelled)
     const model = useGenerationStore(state => state.model)
-    const steps = useGenerationStore(state => state.steps)
-    const cfgScale = useGenerationStore(state => state.cfgScale)
-    const cfgRescale = useGenerationStore(state => state.cfgRescale)
-    const sampler = useGenerationStore(state => state.sampler)
-    const scheduler = useGenerationStore(state => state.scheduler)
-    const smea = useGenerationStore(state => state.smea)
-    const smeaDyn = useGenerationStore(state => state.smeaDyn)
-    const variety = useGenerationStore(state => state.variety)
-    const qualityToggle = useGenerationStore(state => state.qualityToggle)
-    const ucPreset = useGenerationStore(state => state.ucPreset)
     const batchCount = useGenerationStore(state => state.batchCount)
     const currentBatch = useGenerationStore(state => state.currentBatch)
     const generatingMode = useGenerationStore(state => state.generatingMode)
@@ -111,20 +86,6 @@ export function PromptPanel() {
     const setAdditionalPrompt = useGenerationStore(state => state.setAdditionalPrompt)
     const setDetailPrompt = useGenerationStore(state => state.setDetailPrompt)
     const setNegativePrompt = useGenerationStore(state => state.setNegativePrompt)
-    const setSeed = useGenerationStore(state => state.setSeed)
-    const setSeedLocked = useGenerationStore(state => state.setSeedLocked)
-    const setSelectedResolution = useGenerationStore(state => state.setSelectedResolution)
-    const setModel = useGenerationStore(state => state.setModel)
-    const setSteps = useGenerationStore(state => state.setSteps)
-    const setCfgScale = useGenerationStore(state => state.setCfgScale)
-    const setCfgRescale = useGenerationStore(state => state.setCfgRescale)
-    const setSampler = useGenerationStore(state => state.setSampler)
-    const setScheduler = useGenerationStore(state => state.setScheduler)
-    const setSmea = useGenerationStore(state => state.setSmea)
-    const setSmeaDyn = useGenerationStore(state => state.setSmeaDyn)
-    const setVariety = useGenerationStore(state => state.setVariety)
-    const setQualityToggle = useGenerationStore(state => state.setQualityToggle)
-    const setUcPreset = useGenerationStore(state => state.setUcPreset)
     const setBatchCount = useGenerationStore(state => state.setBatchCount)
     const generate = useGenerationStore(state => state.generate)
     const cancelGeneration = useGenerationStore(state => state.cancelGeneration)
@@ -142,54 +103,50 @@ export function PromptPanel() {
 
     // Zustand 선택적 구독 - characterPromptStore
     const characterCount = useCharacterPromptStore(state => state.characters.filter(c => c.enabled).length)
+    const loraCount = useEnabledLoraCount()
 
-    const [promptGenOpen, setPromptGenOpen] = useState(false)
     const [fragmentDialogOpen, setFragmentDialogOpen] = useState(false)
     const [characterPanelOpen, setCharacterPanelOpen] = useState(false)
-    const [imageRefDialogOpen, setImageRefDialogOpen] = useState(false)
+    const [loraDialogOpen, setLoraDialogOpen] = useState(false)
     const [parameterDialogOpen, setParameterDialogOpen] = useState(false)
 
     // 전역 단축키 이벤트 수신
+    // (예전 'AI 프롬프트 생성' 단축키는 변형 모드로, '이미지 참조' 단축키는 LoRA 창으로 바꿨다)
     useEffect(() => {
-        const handleOpenPromptGen = () => setPromptGenOpen(prev => !prev)
+        const handleOpenVariations = () => navigate('/variations')
         const handleOpenFragment = () => setFragmentDialogOpen(prev => !prev)
         const handleOpenParameters = () => setParameterDialogOpen(prev => !prev)
         const handleOpenCharacterPrompt = () => setCharacterPanelOpen(prev => !prev)
-        const handleOpenImageReference = () => setImageRefDialogOpen(prev => !prev)
+        const handleOpenLora = () => setLoraDialogOpen(prev => !prev)
 
-        window.addEventListener(SHORTCUT_EVENTS.OPEN_PROMPT_GENERATOR, handleOpenPromptGen)
+        window.addEventListener(SHORTCUT_EVENTS.OPEN_PROMPT_GENERATOR, handleOpenVariations)
         window.addEventListener(SHORTCUT_EVENTS.OPEN_FRAGMENT_DIALOG, handleOpenFragment)
         window.addEventListener(SHORTCUT_EVENTS.OPEN_PARAMETER_SETTINGS, handleOpenParameters)
         window.addEventListener(SHORTCUT_EVENTS.OPEN_CHARACTER_PROMPT, handleOpenCharacterPrompt)
-        window.addEventListener(SHORTCUT_EVENTS.OPEN_IMAGE_REFERENCE, handleOpenImageReference)
+        window.addEventListener(SHORTCUT_EVENTS.OPEN_IMAGE_REFERENCE, handleOpenLora)
 
         return () => {
-            window.removeEventListener(SHORTCUT_EVENTS.OPEN_PROMPT_GENERATOR, handleOpenPromptGen)
+            window.removeEventListener(SHORTCUT_EVENTS.OPEN_PROMPT_GENERATOR, handleOpenVariations)
             window.removeEventListener(SHORTCUT_EVENTS.OPEN_FRAGMENT_DIALOG, handleOpenFragment)
             window.removeEventListener(SHORTCUT_EVENTS.OPEN_PARAMETER_SETTINGS, handleOpenParameters)
             window.removeEventListener(SHORTCUT_EVENTS.OPEN_CHARACTER_PROMPT, handleOpenCharacterPrompt)
-            window.removeEventListener(SHORTCUT_EVENTS.OPEN_IMAGE_REFERENCE, handleOpenImageReference)
+            window.removeEventListener(SHORTCUT_EVENTS.OPEN_IMAGE_REFERENCE, handleOpenLora)
         }
-    }, [])
+    }, [navigate])
 
-    const handleRandomSeed = () => {
-        if (!seedLocked) {
-            setSeed(generateRandomSeed())
-        }
-    }
-
-
-
-
-    // Conflict Detection
-    const isMainGenerating = generatingMode === 'main'
-    const isSceneGenerating = generatingMode === 'scene'
-    const isConflict = isSceneMode ? isMainGenerating : isSceneGenerating
+    // 어느 모드가 돌고 있는지 (한 번에 한 모드만 ComfyUI에 일을 보낸다)
+    const mainBusy = isGenerating || generatingMode === 'main'
+    const sceneBusy = sceneIsGenerating || sceneIsCancelling || generatingMode === 'scene'
+    const variationBusy = variationRunning || variationCancelling || generatingMode === 'variation'
+    const isConflict =
+        mode === 'main' ? (sceneBusy || variationBusy)
+            : mode === 'scene' ? (mainBusy || variationBusy)
+                : (mainBusy || sceneBusy)
 
     const handleGenerateOrCancel = useCallback(() => {
-        if (isConflict) return // Prevent action if conflict exists
+        if (isConflict) return // 다른 모드가 돌고 있으면 막는다
 
-        if (isSceneMode) {
+        if (mode === 'scene') {
             // Toggle scene generation: start new session or cancel
             if (sceneIsGenerating || sceneIsCancelling) {
                 cancelSceneGeneration()  // Cancel - invalidates session but keeps button locked
@@ -199,18 +156,83 @@ export function PromptPanel() {
             return
         }
 
+        if (mode === 'variation') {
+            const vs = useVariationStore.getState()
+            if (vs.isRunning || vs.isCancelling) {
+                vs.cancel()
+            } else {
+                void vs.start()
+            }
+            return
+        }
+
         if (isGenerating) {
             cancelGeneration()
         } else {
             generate()
         }
-    }, [isConflict, isSceneMode, sceneIsGenerating, sceneIsCancelling, cancelSceneGeneration, startNewGenerationSession, isGenerating, cancelGeneration, generate])
+    }, [isConflict, mode, sceneIsGenerating, sceneIsCancelling, cancelSceneGeneration, startNewGenerationSession, isGenerating, cancelGeneration, generate])
+
+    const isRunningHere =
+        mode === 'scene' ? (sceneIsGenerating || sceneIsCancelling)
+            : mode === 'variation' ? (variationRunning || variationCancelling)
+                : isGenerating
+
+    const isDisabled =
+        isConflict ||
+        (mode === 'scene' && (
+            (sceneQueueCount === 0 && !sceneIsGenerating && !sceneIsCancelling) ||
+            sceneIsCancelling  // 취소 후 지금 그리는 장이 끝날 때까지 잠근다
+        )) ||
+        (mode === 'variation' && (
+            (variationPlanned === 0 && !variationRunning) ||
+            variationCancelling
+        )) ||
+        (mode === 'main' && isGenerating && isCancelled)  // 취소 후 ComfyUI가 멈출 때까지 잠근다
+
+    const conflictHint = isConflict
+        ? (mainBusy
+            ? t('comfy.generate.busyMain', '메인 화면에서 생성 중입니다. 끝나거나 취소한 뒤에 누르세요.')
+            : sceneBusy
+                ? t('comfy.generate.busyScene', '씬 모드에서 생성 중입니다. 끝나거나 취소한 뒤에 누르세요.')
+                : t('comfy.generate.busyVariation', '변형 모드에서 생성 중입니다. 끝나거나 취소한 뒤에 누르세요.'))
+        : undefined
+
+    const renderButtonLabel = () => {
+        if (mode === 'scene') {
+            if (sceneIsCancelling) return <><Spinner />{t('common.cancelling', '취소 중...')}</>
+            if (sceneIsGenerating) {
+                return <><Spinner />{t('common.cancel', '취소')} {totalQueuedCount > 0 && `(${completedCount + 1}/${totalQueuedCount})`}</>
+            }
+            return <><Film className="mr-2 h-5 w-5" />{t('scene.generateAll', '씬 생성')} {sceneQueueCount > 0 && `(${sceneQueueCount})`}</>
+        }
+        if (mode === 'variation') {
+            if (variationCancelling) return <><Spinner />{t('common.cancelling', '취소 중...')}</>
+            if (variationRunning) {
+                return (
+                    <>
+                        <Spinner />
+                        {t('comfy.variation.running', '생성 중')} {variationDone}/{variationTotal}
+                        <span className="ml-1.5 text-sm font-normal opacity-80">· {t('common.cancel', '취소')}</span>
+                    </>
+                )
+            }
+            return (
+                <>
+                    <Shuffle className="mr-2 h-5 w-5" />
+                    {t('comfy.variation.generate', '변형 {{count}}장 생성', { count: variationPlanned })}
+                </>
+            )
+        }
+        if (isGenerating && isCancelled) return <><Spinner />{t('common.cancelling', '취소 중...')}</>
+        if (isGenerating) {
+            return <><Spinner />{batchCount > 1 ? `${t('generate.cancel')} (${currentBatch}/${batchCount})` : t('generate.cancel')}</>
+        }
+        return <><ImagePlus className="mr-2 h-5 w-5" />{t('generate.button')}</>
+    }
 
     return (
         <div className="flex-1 flex flex-col h-full overflow-hidden p-2">
-            {/* Source Image Panel (I2I/Inpaint Mode) */}
-            <SourceImagePanel />
-
             {/* Prompt Inputs Area (Flex Grow, No Scroll on Container) - relative 컨테이너 */}
             <div className="flex-1 flex flex-col min-h-0 gap-2 mb-2 relative">
                 {/* Character Prompt Panel (Accordion Style) - 프롬프트 영역 위에 오버레이 */}
@@ -354,7 +376,23 @@ export function PromptPanel() {
 
             {/* Quick Actions & Parameters Button */}
             <div className="flex gap-2 mb-3">
-                <CharacterSettingsDialog open={imageRefDialogOpen} onOpenChange={setImageRefDialogOpen} />
+                {/* LoRA Button (예전 '이미지 참조' 자리) */}
+                <Tip content={t('comfy.lora.buttonTip', 'LoRA 고르기·세기 조절')}>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 text-xs rounded-xl h-9 relative"
+                        onClick={() => setLoraDialogOpen(true)}
+                    >
+                        <Layers className="h-3.5 w-3.5 mr-1.5" />
+                        {t('comfy.lora.button', 'LoRA')}
+                        {loraCount > 0 && (
+                            <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] font-bold rounded-md px-1 py-0.5 min-w-[16px] h-[16px] flex items-center justify-center shadow-sm">
+                                {loraCount}
+                            </div>
+                        )}
+                    </Button>
+                </Tip>
                 {/* Character Prompt Toggle Button */}
                 <Button
                     variant={characterPanelOpen ? "default" : "outline"}
@@ -388,321 +426,62 @@ export function PromptPanel() {
                     <Puzzle className="h-3.5 w-3.5 mr-1.5" />
                     {t('prompt.fragment')}
                 </Button>
-                {/* AI Prompt Generator Button */}
-                <Tip content={t('promptGenerator.desc', 'Gemini AI로 프롬프트 생성')}>
+                {/* Variation Mode Button (예전 Gemini 버튼 자리) */}
+                <Tip content={t('comfy.variation.navTip', '변형 모드: 헤어스타일·머리색 등을 여러 가지로 바꿔 한 번에 뽑기')}>
                     <Button
-                        variant="outline"
+                        variant={isVariationMode ? "default" : "outline"}
                         size="icon"
-                        className="h-9 w-9 rounded-xl shrink-0 hover:bg-accent"
-                        onClick={() => setPromptGenOpen(true)}
+                        className={cn("h-9 w-9 rounded-xl shrink-0", !isVariationMode && "hover:bg-accent")}
+                        onClick={() => navigate('/variations')}
                     >
-                        <img src={GeminiIcon} alt="Gemini" className="h-5 w-5" />
+                        <Shuffle className="h-4 w-4" />
                     </Button>
                 </Tip>
                 {/* Parameter Settings Dialog */}
                 <Dialog open={parameterDialogOpen} onOpenChange={setParameterDialogOpen}>
-                    <DialogTrigger asChild>
-                        <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl shrink-0">
-                            <SlidersHorizontal className="h-4 w-4" />
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[480px] max-h-[85vh] overflow-y-auto">
+                    <Tip content={model
+                        ? t('comfy.params.buttonTip', '생성 설정 (모델·LoRA·스텝·고화질)')
+                        : t('comfy.params.buttonTipNoModel', '생성 설정: 먼저 체크포인트(모델)를 고르세요')}
+                    >
+                        <DialogTrigger asChild>
+                            <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl shrink-0 relative">
+                                <SlidersHorizontal className="h-4 w-4" />
+                                {!model && (
+                                    <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-background" />
+                                )}
+                            </Button>
+                        </DialogTrigger>
+                    </Tip>
+                    <DialogContent className="sm:max-w-[640px] h-[85vh] max-h-[85vh] flex flex-col overflow-hidden">
                         <DialogHeader>
-                            <DialogTitle>{t('parameters.title')}</DialogTitle>
+                            <DialogTitle>{t('comfy.params.title', '생성 설정')}</DialogTitle>
                             <DialogDescription>
-                                {t('parameters.description')}
+                                {t('comfy.params.description', 'ComfyUI로 그릴 때 쓰는 설정입니다. 바꾼 값은 바로 저장되고 지금 프리셋에도 들어갑니다.')}
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="grid gap-5 py-4">
-                            {/* Model Selection */}
-                            <div className="space-y-2">
-                                <Label className="flex items-center gap-2">
-                                    <Cpu className="h-4 w-4" />
-                                    {t('parameters.model')}
-                                </Label>
-                                <Select value={model} onValueChange={setModel}>
-                                    <SelectTrigger className="rounded-xl">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {AVAILABLE_MODELS.map((m) => (
-                                            <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {/* Resolution (Moved here) */}
-                            {/* Resolution (Moved here) */}
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium">
-                                    {t('settingsPage.general.resolution', '해상도')}
-                                </Label>
-                                <ResolutionSelector
-                                    value={selectedResolution}
-                                    onChange={setSelectedResolution}
-                                    disabled={isGenerating}
-                                />
-                            </div>
-
-                            {/* Seed (Moved here) */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">{t('settings.seed')}</label>
-                                <div className="flex gap-2">
-                                    <Input
-                                        type="number"
-                                        value={seed}
-                                        onChange={(e) => setSeed(Number(e.target.value))}
-                                        disabled={seedLocked}
-                                        className="flex-1 h-9 text-xs rounded-xl"
-                                    />
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        className={cn("h-9 w-9 rounded-xl shrink-0", seedLocked && 'border-primary text-primary bg-primary/10')}
-                                        onClick={() => setSeedLocked(!seedLocked)}
-                                    >
-                                        {seedLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        className="h-9 w-9 rounded-xl shrink-0"
-                                        onClick={handleRandomSeed}
-                                        disabled={seedLocked}
-                                    >
-                                        <Dice5 className="h-3.5 w-3.5" />
-                                    </Button>
-                                </div>
-                            </div>
-
-                            {/* Steps */}
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <Label>{t('parameters.steps')}</Label>
-                                    <span className="text-sm text-muted-foreground">{steps}</span>
-                                </div>
-                                <Slider
-                                    value={[steps]}
-                                    onValueChange={([v]) => setSteps(v)}
-                                    min={1}
-                                    max={50}
-                                    step={1}
-                                    className={cn("w-full", steps > 28 && "[&>.relative>.bg-primary]:bg-destructive")}
-                                />
-                            </div>
-
-                            {/* CFG Scale */}
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <Label>{t('parameters.cfgScale')}</Label>
-                                    <span className="text-sm text-muted-foreground">{cfgScale.toFixed(1)}</span>
-                                </div>
-                                <Slider
-                                    value={[cfgScale]}
-                                    onValueChange={([v]) => setCfgScale(v)}
-                                    min={1}
-                                    max={10}
-                                    step={0.1}
-                                    className="w-full"
-                                />
-                            </div>
-
-                            {/* CFG Rescale */}
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <Label>{t('parameters.cfgRescale')}</Label>
-                                    <span className="text-sm text-muted-foreground">{cfgRescale.toFixed(2)}</span>
-                                </div>
-                                <Slider
-                                    value={[cfgRescale]}
-                                    onValueChange={([v]) => setCfgRescale(v)}
-                                    min={0}
-                                    max={1}
-                                    step={0.01}
-                                    className="w-full"
-                                />
-                            </div>
-
-                            {/* Sampler & Scheduler */}
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-2">
-                                    <Label>{t('parameters.sampler')}</Label>
-                                    <Select value={sampler} onValueChange={setSampler}>
-                                        <SelectTrigger className="rounded-xl">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {SAMPLERS.map((s) => (
-                                                <SelectItem key={s} value={s}>{s}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>{t('parameters.scheduler')}</Label>
-                                    <Select value={scheduler} onValueChange={setScheduler}>
-                                        <SelectTrigger className="rounded-xl">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {SCHEDULERS.map((s) => (
-                                                <SelectItem key={s} value={s}>{s}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            {/* SMEA & SMEA DYN */}
-                            <div className="flex items-center justify-between pt-2">
-                                <div className="flex flex-col gap-1">
-                                    <Label className="cursor-pointer" onClick={() => setSmea(!smea)}>
-                                        {t('parameters.smea')}
-                                    </Label>
-                                    <span className="text-xs text-muted-foreground">Switchable Multi-head External Attention</span>
-                                </div>
-                                <Switch
-                                    checked={smea}
-                                    onChange={(e) => setSmea(e.target.checked)}
-                                />
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                                <div className="flex flex-col gap-1">
-                                    <Label className="cursor-pointer" onClick={() => setSmeaDyn(!smeaDyn)}>
-                                        {t('parameters.smeaDyn')}
-                                    </Label>
-                                    <span className="text-xs text-muted-foreground">Dynamic SMEA</span>
-                                </div>
-                                <Switch
-                                    checked={smeaDyn}
-                                    disabled={!smea}
-                                    onChange={(e) => setSmeaDyn(e.target.checked)}
-                                />
-                            </div>
-
-                            {/* Variety+ */}
-                            <div className="flex items-center justify-between">
-                                <div className="flex flex-col gap-1">
-                                    <Label className="cursor-pointer" onClick={() => setVariety(!variety)}>
-                                        {t('parameters.variety', 'Variety+')}
-                                    </Label>
-                                    <span className="text-xs text-muted-foreground">Increases generation variety</span>
-                                </div>
-                                <Switch
-                                    checked={variety}
-                                    onChange={(e) => setVariety(e.target.checked)}
-                                />
-                            </div>
-
-                            {/* Add Quality Tags */}
-                            <div className="flex items-center justify-between">
-                                <div className="flex flex-col gap-1">
-                                    <Label className="cursor-pointer" onClick={() => setQualityToggle(!qualityToggle)}>
-                                        {t('parameters.qualityToggle', 'Add Quality Tags')}
-                                    </Label>
-                                    <span className="text-xs text-muted-foreground">Adds quality tags to prompt</span>
-                                </div>
-                                <Switch
-                                    checked={qualityToggle}
-                                    onChange={(e) => setQualityToggle(e.target.checked)}
-                                />
-                            </div>
-
-                            {/* UC Preset */}
-                            <div className="space-y-2">
-                                <Label>{t('parameters.ucPreset', 'UC Preset')}</Label>
-                                <Select value={String(ucPreset)} onValueChange={(v) => setUcPreset(Number(v))}>
-                                    <SelectTrigger className="rounded-xl">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="0">Heavy</SelectItem>
-                                        <SelectItem value="1">Light</SelectItem>
-                                        <SelectItem value="2">Furry Focus</SelectItem>
-                                        <SelectItem value="3">Human Focus</SelectItem>
-                                        <SelectItem value="4">None</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {/* End of Parameters Dialog Content */}
-                        </div>
-
+                        <ParamsPanel />
                     </DialogContent>
                 </Dialog>
             </div>
 
-            {/* AI Prompt Generator Dialog */}
-            <PromptGeneratorDialog
-                open={promptGenOpen}
-                onOpenChange={setPromptGenOpen}
-                onApply={(tags) => {
-                    // Append to additional prompt
-                    const current = additionalPrompt.trim()
-                    const newValue = current ? `${current}, ${tags}` : tags
-                    setAdditionalPrompt(newValue)
-                }}
-            />
+            <LoraDialog open={loraDialogOpen} onOpenChange={setLoraDialogOpen} />
 
             {/* Bottom Generate Button Area */}
             <div className="p-0">
                 {/* Generate Button + Counter */}
                 <div className="flex gap-2">
                     <Button
-                        variant={(isGenerating || (isSceneMode && (sceneIsGenerating || sceneIsCancelling))) ? "destructive" : "generate"}
+                        variant={isRunningHere ? "destructive" : "generate"}
                         size="lg"
                         className={cn(
                             "flex-1 h-12 rounded-xl text-base font-semibold shadow-lg transition-all duration-200",
                             isConflict && "opacity-50 cursor-not-allowed"
                         )}
                         onClick={handleGenerateOrCancel}
-                        disabled={
-                            (isSceneMode && sceneQueueCount === 0 && !sceneIsGenerating && !sceneIsCancelling) ||
-                            isConflict ||
-                            sceneIsCancelling ||  // Disable while waiting for API to complete after cancel (Scene Mode)
-                            (isGenerating && isCancelled)  // Disable while waiting for API to complete after cancel (Main Mode)
-                        }
+                        disabled={isDisabled}
+                        title={conflictHint}
                     >
-                        {isSceneMode ? (
-                            sceneIsCancelling ? (
-                                <>
-                                    <div className="mr-2 h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                                    {t('common.cancelling', '취소 중...')}
-                                </>
-                            ) : sceneIsGenerating ? (
-                                <>
-                                    <div className="mr-2 h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                                    {t('common.cancel', '취소')} {totalQueuedCount > 0 && `(${completedCount + 1}/${totalQueuedCount})`}
-                                </>
-                            ) : (
-                                <>
-                                    <Film className="mr-2 h-5 w-5" />
-                                    {t('scene.generateAll', '씬 생성')} {sceneQueueCount > 0 && `(${sceneQueueCount})`}
-                                </>
-                            )
-                        ) : (
-                            isGenerating && isCancelled ? (
-                                <>
-                                    <div className="mr-2 h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                                    {t('common.cancelling', '취소 중...')}
-                                </>
-                            ) : isGenerating ? (
-                                <>
-                                    <div className="mr-2 h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                                    {batchCount > 1
-                                        ? `${t('generate.cancel')} (${currentBatch}/${batchCount})`
-                                        : t('generate.cancel')
-                                    }
-                                </>
-                            ) : (
-                                <>
-                                    <ImagePlus className="mr-2 h-5 w-5" />
-                                    {t('generate.button')}
-                                </>
-                            )
-                        )}
+                        {renderButtonLabel()}
                     </Button>
                     <Counter
                         value={batchCount}

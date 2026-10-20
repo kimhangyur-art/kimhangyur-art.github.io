@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { Plus, Trash2, Pencil, Check, X, FolderOpen, GripVertical, Copy } from 'lucide-react'
 import {
     Dialog,
@@ -12,7 +13,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { usePresetStore } from '@/stores/preset-store'
+import { usePresetStore, type Preset } from '@/stores/preset-store'
+import { prettyFileName } from '@/components/comfy/ParamsShared'
 import { cn } from '@/lib/utils'
 import {
     DndContext,
@@ -53,7 +55,19 @@ interface SortablePresetItemProps {
     onRename: () => void
     onCancelEdit: () => void
     onEditNameChange: (name: string) => void
-    t: any
+    /** 이름 아래 작은 글 (체크포인트·LoRA 수) */
+    subtitle?: string
+    t: TFunction
+}
+
+/** 프리셋 목록에 보여 줄 한 줄 요약: "체크포인트 이름 · LoRA 2" */
+function presetSummary(preset: Preset, t: TFunction): string {
+    const parts: string[] = []
+    parts.push(preset.model ? prettyFileName(preset.model).name : t('comfy.preset.noCheckpoint', '체크포인트 미지정'))
+    const loraCount = (preset.loras ?? []).filter(l => l.enabled && l.name).length
+    if (loraCount > 0) parts.push(`LoRA ${loraCount}`)
+    if (preset.hires?.enabled) parts.push(t('comfy.preset.hiresOn', '고화질'))
+    return parts.join(' · ')
 }
 
 function SortablePresetItem({
@@ -68,6 +82,7 @@ function SortablePresetItem({
     onRename,
     onCancelEdit,
     onEditNameChange,
+    subtitle,
     t
 }: SortablePresetItemProps) {
     const {
@@ -145,8 +160,15 @@ function SortablePresetItem({
                 </div>
             ) : (
                 <>
-                    <span className="flex-1 text-sm font-medium truncate">
-                        {preset.isDefault ? t('preset.default', '기본') : preset.name}
+                    <span className="flex-1 min-w-0 flex flex-col">
+                        <span className="text-sm font-medium truncate">
+                            {preset.isDefault ? t('preset.default', '기본') : preset.name}
+                        </span>
+                        {subtitle && (
+                            <span className="text-[11px] text-muted-foreground truncate" title={subtitle}>
+                                {subtitle}
+                            </span>
+                        )}
                     </span>
                     {isActive && (
                         <span className="text-[10px] text-primary font-medium px-1.5 py-0.5 bg-primary/10 rounded">
@@ -284,7 +306,7 @@ function PresetDialogContent({ open: externalOpen, onOpenChange: externalOnOpenC
                 <DialogHeader>
                     <DialogTitle>{t('preset.title', '프리셋 관리')}</DialogTitle>
                     <DialogDescription>
-                        {t('preset.description', '프롬프트와 설정을 프리셋으로 저장하고 불러올 수 있습니다.')}
+                        {t('comfy.preset.description', '프롬프트와 생성 설정(체크포인트·LoRA·스텝·고화질 등)을 묶어서 저장하고 불러옵니다. 바꾼 내용은 지금 쓰는 프리셋에 저절로 저장됩니다.')}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -319,6 +341,7 @@ function PresetDialogContent({ open: externalOpen, onOpenChange: externalOnOpenC
                                     onRename={() => handleRename(preset.id)}
                                     onCancelEdit={() => setEditingId(null)}
                                     onEditNameChange={setEditName}
+                                    subtitle={presetSummary(preset, t)}
                                     t={t}
                                 />
                             ))}

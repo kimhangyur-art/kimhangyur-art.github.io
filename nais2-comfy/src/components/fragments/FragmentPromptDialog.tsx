@@ -63,11 +63,9 @@ import {
     Download,
     MoreHorizontal,
     GripVertical,
-    Store,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from '@/components/ui/use-toast'
-import { UploadFragmentDialog } from '@/components/marketplace/UploadFragmentDialog'
 
 interface FragmentPromptDialogProps {
     open: boolean
@@ -101,7 +99,6 @@ export function FragmentPromptDialog({ open, onOpenChange }: FragmentPromptDialo
     const [isCreatingFolder, setIsCreatingFolder] = useState(false)
     const [hasChanges, setHasChanges] = useState(false)
     const [tooltipEnabled, setTooltipEnabled] = useState(false)
-    const [showUploadDialog, setShowUploadDialog] = useState(false)
 
     // Dialog 열릴 때 Tooltip 비활성화 후 500ms 뒤 활성화
     useEffect(() => {
@@ -421,7 +418,11 @@ export function FragmentPromptDialog({ open, onOpenChange }: FragmentPromptDialo
                                                 <p><code>&lt;folder/name&gt;</code> - {t('fragment.usageFolder', '폴더 내 파일')}</p>
                                                 <p><code>&lt;*name&gt;</code> - {t('fragment.usageSequential', '순차 선택')}</p>
                                                 <p><code>&lt;a|b|c&gt;</code> - {t('fragment.usageInline', '인라인 랜덤')}</p>
+                                                <p><code>(a, b/c, d)</code> - {t('comfy.fragment.usageParen', '괄호 안에서 / 로 나눈 묶음 중 하나')}</p>
                                             </div>
+                                            <p className="text-xs text-muted-foreground">
+                                                {t('comfy.fragment.usageComfy', '(태그:1.2) 같은 ComfyUI 가중치, \\( \\) 로 쓴 글자 괄호, embedding:·<lora:> 는 바꾸지 않고 그대로 둡니다.')}
+                                            </p>
                                         </div>
                                     </TooltipContent>
                                 </Tooltip>
@@ -486,15 +487,6 @@ export function FragmentPromptDialog({ open, onOpenChange }: FragmentPromptDialo
                                     <DropdownMenuItem onClick={handleExportAll} disabled={files.length === 0}>
                                         <Download className="h-4 w-4 mr-2" />
                                         {t('fragment.exportAll', '전체 내보내기 (JSON)')}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                        onClick={() => setShowUploadDialog(true)}
-                                        disabled={!selectedFile}
-                                        title={!selectedFile ? t('marketplace.selectFileFirst', '공유할 파일을 먼저 선택하세요') : undefined}
-                                    >
-                                        <Store className="h-4 w-4 mr-2" />
-                                        {t('marketplace.shareFragment', '마켓에 공유')}
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -660,12 +652,6 @@ export function FragmentPromptDialog({ open, onOpenChange }: FragmentPromptDialo
                     </div>
                 </div>
             </DialogContent>
-
-            <UploadFragmentDialog
-                open={showUploadDialog}
-                onOpenChange={setShowUploadDialog}
-                fileId={selectedFileId}
-            />
         </Dialog>
     )
 }

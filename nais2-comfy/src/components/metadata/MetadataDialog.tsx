@@ -22,11 +22,53 @@ import {
 } from '@/components/ui/select'
 import { NAIMetadata, parseMetadataFromFile, parseMetadataFromBase64 } from '@/lib/metadata-parser'
 import { usePresetStore } from '@/stores/preset-store'
-import { useGenerationStore } from '@/stores/generation-store'
+import { useGenerationStore, newLoraId } from '@/stores/generation-store'
 import { useCharacterPromptStore } from '@/stores/character-prompt-store'
+import { useComfyStore } from '@/stores/comfy-store'
+import { normalizeSampler, normalizeScheduler } from '@/services/comfy/families'
 import { toast } from '@/components/ui/use-toast'
 import { FileImage, Download, AlertCircle } from 'lucide-react'
-import { useCharacterStore } from '@/stores/character-store'
+
+/** 이 그림의 체크포인트 파일 이름 (NovelAI 그림처럼 파일 이름이 아니면 없음) */
+function checkpointOf(meta: NAIMetadata): string | undefined {
+    const comfy = (meta.raw as { comfy?: { checkpoint?: unknown } } | undefined)?.comfy
+    if (meta.checkpoint) return meta.checkpoint
+    if (typeof comfy?.checkpoint === 'string' && comfy.checkpoint) return comfy.checkpoint
+    if (meta.model && /\.(safetensors|ckpt|pt|pth|bin|gguf|sft)$/i.test(meta.model)) return meta.model
+    return undefined
+}
+
+/** NAIS2 Comfy·ComfyUI 그림인지 (Comment.comfy 또는 ComfyUI 그래프에서 읽었는지) */
+function isComfyMeta(meta: NAIMetadata): boolean {
+    return !!(meta.raw as { comfy?: unknown } | undefined)?.comfy
+}
+
+const baseName = (p: string) => (p.split(/[\\/]/).pop() ?? p).toLowerCase()
+
+/**
+ * ComfyUI 목록에서 같은 파일을 찾는다. 목록이 비어 있으면(아직 못 받았으면) 그대로 쓴다.
+ * 하위 폴더가 달라도 파일 이름이 같으면 목록 쪽 이름을 쓴다.
+ */
+function findInList(list: string[], name: string): string | null {
+    if (list.length === 0) return name
+    if (list.includes(name)) return name
+    const b = baseName(name)
+    return list.find((x) => baseName(x) === b) ?? null
+}
+
+function fmtNum(n: number | undefined): string {
+    if (n === undefined || !Number.isFinite(n)) return '-'
+    return String(Math.round(n * 100) / 100)
+}
+
+function MetaCell({ label, value, title, className }: { label: string; value: React.ReactNode; title?: string; className?: string }) {
+    return (
+        <div className={`bg-muted/30 rounded-lg p-2 min-w-0 ${className ?? ''}`} title={title}>
+            <span className="text-muted-foreground">{label}:</span>
+            <span className="ml-1 font-medium break-all">{value}</span>
+        </div>
+    )
+}
 
 interface MetadataDialogProps {
     open: boolean
@@ -40,15 +82,13 @@ interface LoadOptions {
     resolution: boolean
     seed: boolean
     characterPrompts: boolean
-    vibeTransfer: boolean
 }
 
 export function MetadataDialog({ open, onOpenChange, initialImage }: MetadataDialogProps) {
     const { t } = useTranslation()
     const { presets, activePresetId, loadPreset, syncFromGenerationStore } = usePresetStore()
-    const genStore = useGenerationStore()
     const charStore = useCharacterPromptStore()
-    const { addVibeImage } = useCharacterStore()
+    const comfyLists = useComfyStore((s) => s.lists)
 
     const [metadata, setMetadata] = useState<NAIMetadata | null>(null)
     const [imageDataUrl, setImageDataUrl] = useState<string | null>(null)
@@ -58,9 +98,9 @@ export function MetadataDialog({ open, onOpenChange, initialImage }: MetadataDia
         prompts: true,
         parameters: true,
         resolution: true,
-        seed: true,
+        // 시드는 기본으로 불러오지 않는다 (대부분 시드를 고정하지 않고 쓰므로)
+        seed: false,
         characterPrompts: true,
-        vibeTransfer: true,
     })
     const [isDragOver, setIsDragOver] = useState(false)
 
@@ -158,6 +198,12 @@ export function MetadataDialog({ open, onOpenChange, initialImage }: MetadataDia
             loadPreset(selectedPresetId)
         }
 
+        // (항상 붙어 있는 대화상자라 생성 진행률마다 다시 그리지 않도록 구독하지 않고 꺼내 쓴다)
+        const genStore = useGenerationStore.getState()
+
+        // 적용하면서 바꾸지 못한 것 (알림에 함께 보여 준다)
+        const notes: string[] = []
+
         // Apply selected metadata to generation store
         if (loadOptions.prompts) {
             if (metadata.promptParts) {
@@ -165,9 +211,6 @@ export function MetadataDialog({ open, onOpenChange, initialImage }: MetadataDia
                 genStore.setBasePrompt(metadata.promptParts.base)
                 genStore.setAdditionalPrompt(metadata.promptParts.additional)
                 genStore.setDetailPrompt(metadata.promptParts.detail)
-                if (metadata.promptParts.inpainting !== undefined) {
-                    genStore.setInpaintingPrompt(metadata.promptParts.inpainting)
-                }
                 if (metadata.promptParts.negative !== undefined) {
                     genStore.setNegativePrompt(metadata.promptParts.negative)
                 }
@@ -187,16 +230,47 @@ export function MetadataDialog({ open, onOpenChange, initialImage }: MetadataDia
         }
 
         if (loadOptions.parameters) {
+            const lists = useComfyStore.getState().lists
+
+            // 체크포인트: ComfyUI에 있는 것만 (목록을 아직 못 받았으면 그대로)
+            const ckpt = checkpointOf(metadata)
+            if (ckpt) {
+                const found = findInList(lists.checkpoints, ckpt)
+                if (found) genStore.setModel(found)
+                else notes.push(t('comfy.meta.ckptMissingNote', '체크포인트 {{name}} 가 ComfyUI에 없어 지금 체크포인트를 그대로 둡니다.', { name: ckpt }))
+            } else if (metadata.model) {
+                notes.push(t('comfy.meta.naiModelNote', 'NovelAI 그림이라 체크포인트는 지금 것을 그대로 둡니다.'))
+            }
+
+            // LoRA: 새 id 로. ComfyUI에 없는 LoRA는 꺼 둔다 (켜 두면 생성이 실패한다)
+            if (metadata.loras) {
+                let missing = 0
+                genStore.setLoras(metadata.loras.map((l) => {
+                    const found = findInList(lists.loras, l.name)
+                    if (!found) missing++
+                    return {
+                        id: newLoraId(),
+                        name: found ?? l.name,
+                        enabled: !!found,
+                        strengthModel: l.strengthModel,
+                        strengthClip: l.strengthClip,
+                    }
+                }))
+                if (missing > 0) notes.push(t('comfy.meta.loraMissingNote', 'ComfyUI에 없는 LoRA {{count}}개는 꺼 두었습니다.', { count: missing }))
+            }
+            if (typeof metadata.clipSkip === 'number') genStore.setClipSkip(metadata.clipSkip)
+
             if (metadata.steps) genStore.setSteps(metadata.steps)
             if (metadata.cfgScale) genStore.setCfgScale(metadata.cfgScale)
-            if (metadata.cfgRescale) genStore.setCfgRescale(metadata.cfgRescale)
-            if (metadata.sampler) genStore.setSampler(metadata.sampler)
-            if (metadata.scheduler) genStore.setScheduler(metadata.scheduler)
-            if (typeof metadata.smea === 'boolean') genStore.setSmea(metadata.smea)
-            if (typeof metadata.smeaDyn === 'boolean') genStore.setSmeaDyn(metadata.smeaDyn)
-            if (typeof metadata.variety === 'boolean') genStore.setVariety(metadata.variety)
+            // CFG 보정(RescaleCFG)은 ComfyUI 그림의 값만 쓴다 (NovelAI의 rescale 은 뜻이 달라서)
+            if (isComfyMeta(metadata)) genStore.setCfgRescale(metadata.cfgRescale ?? 0)
+            if (metadata.sampler) genStore.setSampler(normalizeSampler(metadata.sampler))
+            if (metadata.scheduler) genStore.setScheduler(normalizeScheduler(metadata.scheduler))
             if (typeof metadata.qualityToggle === 'boolean') genStore.setQualityToggle(metadata.qualityToggle)
-            if (typeof metadata.ucPreset === 'number') genStore.setUcPreset(metadata.ucPreset)
+            if (typeof metadata.ucPreset === 'number') {
+                // 2(Furry)·3(Human)은 NovelAI 전용이라 '강하게'(0)로
+                genStore.setUcPreset(metadata.ucPreset === 2 || metadata.ucPreset === 3 ? 0 : metadata.ucPreset)
+            }
         }
 
         if (loadOptions.resolution && metadata.width && metadata.height) {
@@ -207,9 +281,9 @@ export function MetadataDialog({ open, onOpenChange, initialImage }: MetadataDia
             })
         }
 
+        // 시드는 다음 한 장에만 쓴다. 고정(잠금)은 하지 않는다 — 고정하려면 사용자가 직접 잠근다
         if (loadOptions.seed && metadata.seed) {
             genStore.setSeed(metadata.seed)
-            genStore.setSeedLocked(true)
         }
 
         if (loadOptions.characterPrompts && metadata.v4_prompt?.caption?.char_captions) {
@@ -243,27 +317,14 @@ export function MetadataDialog({ open, onOpenChange, initialImage }: MetadataDia
             })
         }
 
-        if (loadOptions.vibeTransfer && metadata.encodedVibes && metadata.encodedVibes.length > 0) {
-            // Import Vibe Transfers (Encoded only)
-            const infos = metadata.vibeTransferInfo || []
-            metadata.encodedVibes.forEach((encoded, index) => {
-                // We don't have the original image, so we pass empty string for base64
-                // The CharacterList component will handle displaying a placeholder
-                addVibeImage(
-                    '',
-                    encoded,
-                    infos[index]?.informationExtracted ?? 1.0,
-                    infos[index]?.strength ?? 0.6
-                )
-            })
-        }
-
         // Save to preset
         syncFromGenerationStore()
 
         toast({
             title: t('metadata.applied', '메타데이터 적용됨'),
-            description: t('metadata.appliedDesc', '선택한 설정이 프리셋에 적용되었습니다.'),
+            description: notes.length
+                ? notes.join(' ')
+                : t('metadata.appliedDesc', '선택한 설정이 프리셋에 적용되었습니다.'),
             variant: 'success',
         })
 
@@ -283,7 +344,6 @@ export function MetadataDialog({ open, onOpenChange, initialImage }: MetadataDia
             resolution: newValue,
             seed: newValue,
             characterPrompts: newValue,
-            vibeTransfer: newValue,
         })
     }
 
@@ -291,6 +351,9 @@ export function MetadataDialog({ open, onOpenChange, initialImage }: MetadataDia
         setMetadata(null)
         setImageDataUrl(null)
     }
+
+    const metadataCheckpoint = metadata ? checkpointOf(metadata) : undefined
+    const checkpointMissing = !!metadataCheckpoint && !findInList(comfyLists.checkpoints, metadataCheckpoint)
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -322,7 +385,7 @@ export function MetadataDialog({ open, onOpenChange, initialImage }: MetadataDia
                             {isLoading ? t('metadata.loading', '불러오는 중...') : t('metadata.dropHere', '이미지를 여기에 드롭하세요')}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                            {t('metadata.dropDesc', 'PNG 파일에서 메타데이터를 추출합니다')}
+                            {t('comfy.meta.dropDesc', 'NAIS2·NovelAI·ComfyUI로 만든 PNG에서 프롬프트와 설정을 읽습니다')}
                         </p>
                     </div>
                 ) : (
@@ -399,54 +462,72 @@ export function MetadataDialog({ open, onOpenChange, initialImage }: MetadataDia
                                             </Label>
                                         </div>
                                         <div className="grid grid-cols-3 gap-2 text-xs">
-                                            <div className="bg-muted/30 rounded-lg p-2">
-                                                <span className="text-muted-foreground">Steps:</span>
-                                                <span className="ml-1 font-medium">{metadata.steps || '-'}</span>
-                                            </div>
-                                            <div className="bg-muted/30 rounded-lg p-2" title="Prompt Guidance (API: scale)">
-                                                <span className="text-muted-foreground">Guidance:</span>
-                                                <span className="ml-1 font-medium">{metadata.cfgScale || '-'}</span>
-                                            </div>
-                                            <div className="bg-muted/30 rounded-lg p-2" title="Prompt Guidance Rescale (API: cfg_rescale)">
-                                                <span className="text-muted-foreground">Rescale:</span>
-                                                <span className="ml-1 font-medium">{metadata.cfgRescale ?? '-'}</span>
-                                            </div>
-                                            <div className="bg-muted/30 rounded-lg p-2">
-                                                <span className="text-muted-foreground">Sampler:</span>
-                                                <span className="ml-1 font-medium">{metadata.sampler || '-'}</span>
-                                            </div>
-                                            <div className="bg-muted/30 rounded-lg p-2">
-                                                <span className="text-muted-foreground">SMEA:</span>
-                                                <span className="ml-1 font-medium">
-                                                    {metadata.smea ? 'ON' : 'OFF'}
-                                                    {metadata.smeaDyn ? ' (DYN)' : ''}
-                                                </span>
-                                            </div>
-                                            <div className="bg-muted/30 rounded-lg p-2">
-                                                <span className="text-muted-foreground">Variety:</span>
-                                                <span className="ml-1 font-medium">
-                                                    {metadata.variety ? '+58' : 'OFF'}
-                                                </span>
-                                            </div>
-                                            <div className="bg-muted/30 rounded-lg p-2">
-                                                <span className="text-muted-foreground">Quality Tags:</span>
-                                                <span className="ml-1 font-medium">
-                                                    {typeof metadata.qualityToggle === 'boolean'
-                                                        ? (metadata.qualityToggle ? 'ON' : 'OFF')
+                                            <MetaCell label={t('comfy.meta.steps', '스텝')} value={metadata.steps || '-'}
+                                                title={t('comfy.meta.stepsHint', '몇 번에 걸쳐 그림을 다듬는지. 많을수록 느리고 조금 더 정교합니다.')} />
+                                            <MetaCell label="CFG" value={metadata.cfgScale || '-'}
+                                                title={t('comfy.meta.cfgHint', '프롬프트를 얼마나 강하게 따를지 (NovelAI의 Guidance)')} />
+                                            <MetaCell label={t('comfy.meta.sampler', '샘플러')} value={metadata.sampler ? normalizeSampler(metadata.sampler) : '-'}
+                                                title={metadata.sampler} />
+                                            <MetaCell label={t('comfy.meta.scheduler', '스케줄러')} value={metadata.scheduler ? normalizeScheduler(metadata.scheduler) : '-'}
+                                                title={metadata.scheduler} />
+                                            <MetaCell label="CLIP skip" value={metadata.clipSkip ?? '-'}
+                                                title={t('comfy.meta.clipSkipHint', '1 = 건너뛰지 않음, 2 = 마지막 층 하나 건너뜀 (애니 계열 모델 권장)')} />
+                                            <MetaCell label={t('comfy.meta.hires', '고화질 단계')}
+                                                value={metadata.hires?.enabled
+                                                    ? `×${fmtNum(metadata.hires.scale)} · ${fmtNum(metadata.hires.denoise)}`
+                                                    : metadata.hires === null ? t('comfy.meta.off', '꺼짐') : '-'}
+                                                title={metadata.hires?.enabled
+                                                    ? t('comfy.meta.hiresDetail', '{{method}} 방식으로 {{scale}}배 키운 뒤 강도 {{denoise}}, {{steps}}스텝으로 다듬음', {
+                                                        method: metadata.hires.method === 'latent' ? t('comfy.meta.hiresLatent', '잠재(latent)')
+                                                            : metadata.hires.method === 'model' ? t('comfy.meta.hiresModel', '업스케일 모델') : t('comfy.meta.hiresPixel', '그림 확대'),
+                                                        scale: fmtNum(metadata.hires.scale),
+                                                        denoise: fmtNum(metadata.hires.denoise),
+                                                        steps: metadata.hires.steps,
+                                                    })
+                                                    : t('comfy.meta.hiresHint', '생성하면서 한 번 더 크게 다듬는 단계')} />
+                                            <MetaCell className="col-span-3" label={t('comfy.meta.checkpoint', '체크포인트')}
+                                                value={metadataCheckpoint
+                                                    ? <>
+                                                        {metadataCheckpoint}
+                                                        {checkpointMissing && (
+                                                            <span className="ml-2 text-amber-500">{t('comfy.meta.notInComfy', '(ComfyUI에 없음)')}</span>
+                                                        )}
+                                                    </>
+                                                    : metadata.model
+                                                        ? <>{metadata.model} <span className="text-muted-foreground">{t('comfy.meta.naiModel', '(NovelAI 모델 · 적용 안 함)')}</span></>
                                                         : '-'}
-                                                </span>
-                                            </div>
-                                            <div className="bg-muted/30 rounded-lg p-2">
-                                                <span className="text-muted-foreground">UC Preset:</span>
-                                                <span className="ml-1 font-medium">
-                                                    {metadata.ucPreset === 0 ? 'Heavy' :
-                                                        metadata.ucPreset === 1 ? 'Light' :
-                                                            metadata.ucPreset === 2 ? 'Furry' :
-                                                                metadata.ucPreset === 3 ? 'Human' :
-                                                                    metadata.ucPreset === 4 ? 'None' : '-'}
-                                                </span>
-                                            </div>
+                                                title={metadataCheckpoint ?? metadata.model} />
+                                            <MetaCell className="col-span-3" label="LoRA"
+                                                value={metadata.loras === undefined
+                                                    ? '-'
+                                                    : metadata.loras.length === 0
+                                                        ? t('comfy.meta.none', '없음')
+                                                        : metadata.loras.map((l, i) => {
+                                                            const missing = !findInList(comfyLists.loras, l.name)
+                                                            return (
+                                                                <span key={i} className={`inline-block mr-2 ${missing ? 'text-amber-500' : ''}`}>
+                                                                    {l.name.split(/[\\/]/).pop()} {fmtNum(l.strengthModel)}/{fmtNum(l.strengthClip)}
+                                                                    {missing && ` ${t('comfy.meta.notInComfy', '(ComfyUI에 없음)')}`}
+                                                                </span>
+                                                            )
+                                                        })}
+                                                title={t('comfy.meta.loraHint', '이름 뒤의 숫자는 모델 강도 / CLIP 강도')} />
+                                            {metadata.variant?.label && (
+                                                <MetaCell className="col-span-3" label={t('comfy.meta.variant', '변형')} value={metadata.variant.label} />
+                                            )}
+                                            {metadata.upscaledFrom && (
+                                                <MetaCell className="col-span-3" label={t('comfy.meta.upscaledFrom', '고화질로 다시 그림')}
+                                                    value={t('comfy.meta.upscaledFromValue', '{{scale}}배, 다듬기 강도 {{denoise}}', { scale: fmtNum(metadata.upscaledFrom.scale), denoise: fmtNum(metadata.upscaledFrom.denoise) })} />
+                                            )}
                                         </div>
+                                        {checkpointMissing && (
+                                            <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                                                <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                                                <p className="text-xs text-amber-600 dark:text-amber-400">
+                                                    {t('comfy.meta.ckptMissingWarn', '이 그림의 체크포인트가 ComfyUI에 없습니다. 적용해도 체크포인트는 지금 고른 것을 그대로 씁니다.')}
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Resolution */}
@@ -484,6 +565,9 @@ export function MetadataDialog({ open, onOpenChange, initialImage }: MetadataDia
                                                 {metadata.seed || '-'}
                                             </span>
                                         </div>
+                                        <p className="text-xs text-muted-foreground pl-6">
+                                            {t('comfy.meta.seedHint', '켜면 다음 한 장에만 이 시드를 씁니다. 시드를 고정하지는 않습니다.')}
+                                        </p>
                                     </div>
 
                                     {/* Character Prompts */}
@@ -513,34 +597,6 @@ export function MetadataDialog({ open, onOpenChange, initialImage }: MetadataDia
                                                     </div>
                                                 ))}
                                             </div>
-                                        </div>
-                                    )}
-
-                                    {/* Warnings / Vibe Transfer Info */}
-                                    {metadata.hasVibeTransfer && (
-                                        <div className="space-y-2">
-                                            <div className="flex items-center gap-2">
-                                                <Checkbox
-                                                    id="opt-vibe"
-                                                    checked={loadOptions.vibeTransfer}
-                                                    onCheckedChange={() => toggleOption('vibeTransfer')}
-                                                />
-                                                <Label htmlFor="opt-vibe" className="text-sm font-medium cursor-pointer">
-                                                    {t('metadata.optVibeVersion', '바이브 트랜스퍼 (데이터만 포함)')}
-                                                </Label>
-                                            </div>
-                                            <p className="text-xs text-muted-foreground pl-6">
-                                                {t('metadata.vibeDesc', '원본 이미지는 없지만, 인코딩된 바이브 데이터를 복원합니다.')}
-                                            </p>
-                                        </div>
-                                    )}
-
-                                    {metadata.hasCharacterReference && (
-                                        <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                                            <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
-                                            <p className="text-xs text-amber-600 dark:text-amber-400">
-                                                {t('metadata.charRefWarning', 'Character Reference detected. Extraction supported via Director Tools.')}
-                                            </p>
                                         </div>
                                     )}
                                 </div>

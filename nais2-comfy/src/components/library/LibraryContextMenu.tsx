@@ -2,39 +2,37 @@ import {
     ContextMenu,
     ContextMenuContent,
     ContextMenuItem,
+    ContextMenuSeparator,
     ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import { LibraryItem, useLibraryStore } from '@/stores/library-store'
-import { Copy, FolderOpen, Save, Trash2, Wand2, Users, Pencil, FileSearch } from 'lucide-react'
+import { Copy, FolderOpen, Save, Trash2, Pencil, FileSearch, Maximize2, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/components/ui/use-toast'
 import { save } from '@tauri-apps/plugin-dialog'
 import { writeFile, remove, readFile } from '@tauri-apps/plugin-fs'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
-import { useNavigate } from 'react-router-dom'
-import { useToolsStore } from '@/stores/tools-store'
+import { copyImageToClipboard, imageExtension, withImageExtension } from '@/lib/image-utils'
 
 interface LibraryContextMenuProps {
     item: LibraryItem
     children: React.ReactNode
     onRename?: () => void
-    onAddRef?: () => void
     onLoadMetadata?: () => void
+    /** 고화질로 다시 그리기 */
+    onUpscale?: () => void
+    /** 고화질로 다시 그리는 중 */
+    isBusy?: boolean
 }
 
-export function LibraryContextMenu({ item, children, onRename, onAddRef, onLoadMetadata }: LibraryContextMenuProps) {
+export function LibraryContextMenu({ item, children, onRename, onLoadMetadata, onUpscale, isBusy }: LibraryContextMenuProps) {
     const { t } = useTranslation()
     const { removeItem } = useLibraryStore()
-    const navigate = useNavigate()
-    const { setActiveImage } = useToolsStore()
 
     const handleCopy = async () => {
         try {
             const data = await readFile(item.path)
-            const blob = new Blob([data], { type: 'image/png' })
-            await navigator.clipboard.write([
-                new ClipboardItem({ [blob.type]: blob })
-            ])
+            await copyImageToClipboard(data, item.path)
             toast({ title: t('actions.copied', '복사 완료'), variant: 'success' })
         } catch (e) {
             console.error('Copy failed:', e)
@@ -45,35 +43,19 @@ export function LibraryContextMenu({ item, children, onRename, onAddRef, onLoadM
     const handleSaveAs = async () => {
         try {
             const data = await readFile(item.path)
+            // 라이브러리 이름에는 확장자가 없으므로 원본 파일의 확장자를 붙인다
+            const ext = imageExtension(item.path)
             const filePath = await save({
-                defaultPath: item.name,
-                filters: [{ name: 'Image', extensions: ['png', 'jpg', 'webp'] }],
+                defaultPath: withImageExtension(item.name, ext),
+                filters: [{ name: t('comfy.file.imageFilter', '{{ext}} 그림', { ext: ext.toUpperCase() }), extensions: [ext] }],
             })
             if (filePath) {
-                await writeFile(filePath, data)
+                await writeFile(withImageExtension(filePath, ext), data)
                 toast({ title: t('toast.saved', '저장 완료'), variant: 'success' })
             }
         } catch (e) {
             console.error('Save failed:', e)
             toast({ title: t('toast.saveFailed', '저장 실패'), variant: 'destructive' })
-        }
-    }
-
-    const handleSmartTools = async () => {
-        try {
-            const data = await readFile(item.path)
-            let binary = ''
-            const len = data.byteLength
-            for (let i = 0; i < len; i++) {
-                binary += String.fromCharCode(data[i])
-            }
-            const base64 = btoa(binary)
-
-            setActiveImage(`data:image/png;base64,${base64}`)
-            navigate('/tools')
-        } catch (e) {
-            console.error('Failed to load for tools:', e)
-            toast({ title: t('smartTools.error', '이미지 로드 실패'), variant: 'destructive' })
         }
     }
 
@@ -87,9 +69,6 @@ export function LibraryContextMenu({ item, children, onRename, onAddRef, onLoadM
 
     const handleDelete = async () => {
         try {
-            // Optional: Ask for confirmation or just delete? 
-            // Usually direct delete in context menu is fine if there's no undo, but let's just delete for now as per requirement.
-            // Requirement didn't specify confirmation dialog.
             await remove(item.path)
             removeItem(item.id)
             toast({ title: t('actions.deleted', '삭제 완료'), variant: 'success' })
@@ -117,14 +96,21 @@ export function LibraryContextMenu({ item, children, onRename, onAddRef, onLoadM
                     <Copy className="h-4 w-4 mr-2" />
                     {t('actions.copy', '복사')}
                 </ContextMenuItem>
-                <ContextMenuItem onClick={handleSmartTools}>
-                    <Wand2 className="h-4 w-4 mr-2" />
-                    {t('smartTools.title', '스마트 툴')}
-                </ContextMenuItem>
-                <ContextMenuItem onClick={onAddRef}>
-                    <Users className="h-4 w-4 mr-2" />
-                    {t('actions.addAsRef', '이미지 참조')}
-                </ContextMenuItem>
+                {/* 스마트 툴·이미지 참조 자리: 고화질로 다시 그리기 */}
+                {!item.isStack && (
+                    <ContextMenuItem onClick={onUpscale} disabled={!onUpscale || isBusy} className="items-start">
+                        {isBusy
+                            ? <Loader2 className="h-4 w-4 mr-2 mt-0.5 animate-spin" />
+                            : <Maximize2 className="h-4 w-4 mr-2 mt-0.5" />}
+                        <span className="flex flex-col">
+                            <span>{isBusy ? t('comfy.upscale.running', '고화질로 다시 그리는 중…') : t('comfy.upscale.action', '고화질로 다시 그리기')}</span>
+                            <span className="text-[10px] leading-tight text-muted-foreground">
+                                {t('comfy.upscale.menuHint', '시드 없이 이 그림에서 시작 · 새 파일로 저장')}
+                            </span>
+                        </span>
+                    </ContextMenuItem>
+                )}
+                <ContextMenuSeparator />
                 <ContextMenuItem onClick={onLoadMetadata}>
                     <FileSearch className="h-4 w-4 mr-2" />
                     {t('metadata.loadFromImage', '메타데이터 불러오기')}

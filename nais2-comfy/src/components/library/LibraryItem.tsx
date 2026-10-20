@@ -4,22 +4,25 @@ import { LibraryItem as LibraryItemType } from '@/stores/library-store'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { LibraryContextMenu } from './LibraryContextMenu'
 import { cn } from '@/lib/utils'
-import { Check, Square, Layers } from 'lucide-react'
+import { Check, Square, Layers, Loader2 } from 'lucide-react'
 
 interface LibraryItemProps {
     item: LibraryItemType
     className?: string
     isOverlay?: boolean
     onRename?: (item: LibraryItemType) => void
-    onAddRef?: (item: LibraryItemType) => void
     onLoadMetadata?: (item: LibraryItemType) => void
+    /** 고화질로 다시 그리기 */
+    onUpscale?: (item: LibraryItemType) => void
+    /** 고화질로 다시 그리는 중이면 그림 위에 표시 */
+    isBusy?: boolean
     onImageClick?: (imageUrl: string) => void
     isEditMode?: boolean
     isSelected?: boolean
     onSelectionClick?: (e: React.MouseEvent) => void
 }
 
-export function LibraryItem({ item, className, isOverlay, onRename, onAddRef, onLoadMetadata, onImageClick, isEditMode, isSelected, onSelectionClick }: LibraryItemProps) {
+export function LibraryItem({ item, className, isOverlay, onRename, onLoadMetadata, onUpscale, isBusy, onImageClick, isEditMode, isSelected, onSelectionClick }: LibraryItemProps) {
     const { t } = useTranslation()
     const [imageUrl, setImageUrl] = useState<string>('')
     const [isLoading, setIsLoading] = useState(true)
@@ -81,6 +84,14 @@ export function LibraryItem({ item, className, isOverlay, onRename, onAddRef, on
                 </div>
             )}
 
+            {/* 고화질로 다시 그리는 중 */}
+            {isBusy && (
+                <div className="absolute inset-0 z-20 bg-black/40 flex flex-col items-center justify-center gap-2 text-white">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <span className="text-[11px] font-medium">{t('comfy.upscale.running', '고화질로 다시 그리는 중…')}</span>
+                </div>
+            )}
+
             {/* Stack Badge */}
             {item.isStack && (
                 <div className="absolute top-2 right-2 z-30 px-2 py-1 bg-purple-500 text-white text-xs font-bold rounded-full flex items-center gap-1">
@@ -101,8 +112,9 @@ export function LibraryItem({ item, className, isOverlay, onRename, onAddRef, on
         <LibraryContextMenu
             item={item}
             onRename={onRename ? () => onRename(item) : undefined}
-            onAddRef={onAddRef ? () => onAddRef(item) : undefined}
             onLoadMetadata={onLoadMetadata ? () => onLoadMetadata(item) : undefined}
+            onUpscale={onUpscale ? () => onUpscale(item) : undefined}
+            isBusy={isBusy}
         >
             {content}
         </LibraryContextMenu>

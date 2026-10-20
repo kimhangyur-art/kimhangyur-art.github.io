@@ -1,10 +1,10 @@
-import { useState, useRef, useEffect, Fragment, KeyboardEvent, useCallback } from 'react'
+import { useState, useRef, useEffect, useId, Fragment, KeyboardEvent, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import Editor from 'react-simple-code-editor'
 import { getCaretCoordinates } from '@/utils/caret-coords'
 import { cn } from '@/lib/utils'
-import tagsData from '@/assets/tags.json'
 import { useFragmentStore } from '@/stores/fragment-store'
+import { useSettingsStore } from '@/stores/settings-store'
 
 // --- Types ---
 interface Tag {
@@ -33,22 +33,61 @@ interface AutocompleteTextareaProps {
     readOnly?: boolean
 }
 
-// --- Constants ---
-const ALL_TAGS = tagsData as Tag[]
-
-// 사전 처리: 소문자 변환된 label 캐싱 (최초 1회만)
-const TAGS_WITH_LOWER = ALL_TAGS.map(tag => ({
-    ...tag,
-    _lower: tag.label.toLowerCase()
-}))
-
-// 첫 글자별 인덱스 생성 (O(1) 접근)
-const TAG_INDEX: Record<string, typeof TAGS_WITH_LOWER> = {}
-for (const tag of TAGS_WITH_LOWER) {
-    const firstChar = tag._lower[0] || '_'
-    if (!TAG_INDEX[firstChar]) TAG_INDEX[firstChar] = []
-    TAG_INDEX[firstChar].push(tag)
+// --- Tag dictionary (lazy) ---
+// tags.json 은 28MB 라서 처음 입력 칸을 누를 때 따로 불러온다 (첫 화면이 빨리 뜨도록)
+interface IndexedTag extends Tag {
+    _lower: string
 }
+
+interface TagDictionary {
+    all: IndexedTag[]
+    // 첫 글자별 인덱스 (O(1) 접근)
+    byFirstChar: Record<string, IndexedTag[]>
+}
+
+let tagDictionary: TagDictionary | null = null
+let tagDictionaryPromise: Promise<TagDictionary> | null = null
+
+function loadTagDictionary(): Promise<TagDictionary> {
+    if (tagDictionary) return Promise.resolve(tagDictionary)
+    if (!tagDictionaryPromise) {
+        tagDictionaryPromise = import('@/assets/tags.json')
+            .then((mod) => {
+                const raw = mod.default as unknown as Tag[]
+                // 사전 처리: 소문자 변환된 label 캐싱 (최초 1회만)
+                const all: IndexedTag[] = raw.map(tag => ({ ...tag, _lower: tag.label.toLowerCase() }))
+                const byFirstChar: Record<string, IndexedTag[]> = {}
+                for (const tag of all) {
+                    const firstChar = tag._lower[0] || '_'
+                    if (!byFirstChar[firstChar]) byFirstChar[firstChar] = []
+                    byFirstChar[firstChar].push(tag)
+                }
+                tagDictionary = { all, byFirstChar }
+                return tagDictionary
+            })
+            .catch((err) => {
+                // 다음에 다시 시도할 수 있게
+                tagDictionaryPromise = null
+                throw err
+            })
+    }
+    return tagDictionaryPromise
+}
+
+// 지금 입력 중인 단어의 경계: 쉼표, 줄바꿈, :: 가중치, 괄호 ( ) { } [ ], 와일드카드 구분자 |
+const CURRENT_WORD_RE = /[^,\n:(){}[\]|]*$/
+// 이 글자 바로 뒤에는 띄어쓰기 없이 붙여 넣는다
+const NO_SPACE_AFTER = [' ', '\n', ':', '(', '{', '[', '|']
+
+/** ComfyUI 문법에서 괄호는 가중치라서 글자 괄호는 \( \) 로 써야 한다 */
+function escapeParens(text: string): string {
+    return text.replace(/(?<!\\)([()])/g, '\\$1')
+}
+
+// 하이라이트: NAI 가중치 1.2::태그::, ComfyUI 가중치 (태그:1.2), 조각 <이름>
+const HIGHLIGHT_RE = /(-?[\d.]+::.*?::)|((?<!\\)\((?:[^()\\\n]|\\.)*?:\s*-?\d*\.?\d+\s*\))|(<[^>]+>)/g
+const NAI_WEIGHT_RE = /^-?[\d.]+::.*::$/
+const COMFY_WEIGHT_RE = /^\((?:[^()\\\n]|\\.)*?:\s*(-?\d*\.?\d+)\s*\)$/
 
 // Single source of truth for Typography to ensure Textarea and Pre match perfectly.
 const TYPOGRAPHY = {
@@ -73,11 +112,20 @@ export function AutocompleteTextarea({
     const containerRef = useRef<HTMLDivElement>(null) // The scrolling container
     const listRef = useRef<HTMLDivElement>(null)
 
-    // onChange 디바운스를 위한 타이머 ref
+    // 칸마다 다른 textarea id
+    const reactId = useId()
+    const textareaId = `prompt-editor-${reactId.replace(/[^a-zA-Z0-9_-]/g, '')}`
+
+    // onChange 디바운스를 위한 타이머 ref + 아직 보내지 않은 값
     const onChangeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const pendingValueRef = useRef<string | null>(null)
+    const onChangeRef = useRef(onChange)
+    onChangeRef.current = onChange
 
     // Fragment Store 구독 (조각 프롬프트 목록)
     const fragmentFiles = useFragmentStore(state => state.files)
+    // NAI 문법 변환이 켜져 있으면 글자 괄호는 보낼 때 변환기가 \( \) 로 바꾼다
+    const naiSyntax = useSettingsStore(state => state.naiSyntax)
 
     // --- State ---
     // 내부 state로 즉시 렌더링 (uncontrolled 방식)
@@ -96,11 +144,30 @@ export function AutocompleteTextarea({
         }
     }, [value]) // internalValue는 의도적으로 dependency에서 제외
 
+    // --- onChange 디바운스 ---
+    const flushChange = useCallback(() => {
+        if (onChangeTimerRef.current) {
+            clearTimeout(onChangeTimerRef.current)
+            onChangeTimerRef.current = null
+        }
+        const pending = pendingValueRef.current
+        if (pending !== null) {
+            pendingValueRef.current = null
+            onChangeRef.current({ target: { value: pending } })
+        }
+    }, [])
+
+    const scheduleChange = useCallback((next: string, delay: number) => {
+        pendingValueRef.current = next
+        if (onChangeTimerRef.current) clearTimeout(onChangeTimerRef.current)
+        onChangeTimerRef.current = setTimeout(flushChange, delay)
+    }, [flushChange])
+
     // --- Helpers ---
     const getCurrentWord = (text: string, position: number) => {
         const left = text.slice(0, position)
-        // Match backwards to comma, newline, or :: (for V4 weight syntax like 2::tag::)
-        const match = left.match(/[^,\n:]*$/)
+        // 쉼표·줄바꿈·::(NAI 가중치)·괄호·| 까지 거슬러 올라간다
+        const match = left.match(CURRENT_WORD_RE)
         return match ? match[0].trimStart() : ''
     }
 
@@ -166,12 +233,27 @@ export function AutocompleteTextarea({
             return
         }
 
+        // 태그 사전이 아직 없으면 불러온 뒤 다시 확인한다
+        const dict = tagDictionary
+        if (!dict) {
+            loadTagDictionary()
+                .then(() => {
+                    const current = textareaRef.current
+                    if (current && current === el && document.activeElement === el) {
+                        checkAutocompleteRef.current(current.value, current)
+                    }
+                })
+                .catch((err) => console.warn('[Autocomplete] 태그 사전을 불러오지 못했습니다:', err))
+            setIsVisible(false)
+            return
+        }
+
         // 즉시 검색 (디바운스 없음 - 빠른 반응성)
         const lower = word.toLowerCase()
         const firstChar = lower[0] || ''
 
         // 인덱스 기반 검색 (해당 첫 글자 태그만 검색)
-        const indexedTags = TAG_INDEX[firstChar] || []
+        const indexedTags = dict.byFirstChar[firstChar] || []
         const matches: SuggestionItem[] = []
 
         // 1단계: 인덱스된 태그에서 startsWith 매칭
@@ -184,7 +266,7 @@ export function AutocompleteTextarea({
 
         // 2단계: 부족하면 전체에서 includes 검색 (느리지만 fallback)
         if (matches.length < maxSuggestions) {
-            for (const tag of TAGS_WITH_LOWER) {
+            for (const tag of dict.all) {
                 if (matches.length >= maxSuggestions) break
                 if (!tag._lower.startsWith(lower) && tag._lower.includes(lower)) {
                     matches.push(tag)
@@ -209,6 +291,10 @@ export function AutocompleteTextarea({
             setIsVisible(false)
         }
     }, [maxSuggestions, fragmentFiles])
+
+    // 사전을 다 불러온 뒤 최신 함수로 다시 확인하려고 둔다
+    const checkAutocompleteRef = useRef(checkAutocomplete)
+    checkAutocompleteRef.current = checkAutocomplete
 
     const insertSuggestion = (suggestion: SuggestionItem) => {
         if (!textareaRef.current) return
@@ -246,14 +332,11 @@ export function AutocompleteTextarea({
             })
 
             // Debounce external onChange to avoid re-render resetting cursor
-            if (onChangeTimerRef.current) clearTimeout(onChangeTimerRef.current)
-            onChangeTimerRef.current = setTimeout(() => {
-                onChange({ target: { value: newValue } })
-            }, 50)
+            scheduleChange(newValue, 50)
         } else {
             // 일반 태그 삽입 (:: 문법 지원)
             const left = val.slice(0, pos)
-            const wordMatch = left.match(/[^,\n:]*$/)
+            const wordMatch = left.match(CURRENT_WORD_RE)
             if (!wordMatch) return
 
             const wordStart = wordMatch.index!
@@ -262,17 +345,21 @@ export function AutocompleteTextarea({
 
             // Add space only if not at start and not after special chars
             const lastChar = before.slice(-1)
-            const needsSpace = before.length > 0 && ![' ', '\n', ':'].includes(lastChar)
+            const needsSpace = before.length > 0 && !NO_SPACE_AFTER.includes(lastChar)
             const prefix = needsSpace ? ' ' : ''
 
             // Always use ", " as suffix (user will close :: manually if needed)
             const suffix = ', '
 
+            // NAI 문법 변환을 끈 경우에만 글자 괄호를 \( \) 로 바꿔 넣는다
+            // (켜져 있으면 보낼 때 변환기가 바꾸므로 그대로 둔다. 두 번 바꾸면 \\( 가 된다)
+            const inserted = naiSyntax ? suggestion.value : escapeParens(suggestion.value)
+
             // Keep after as-is to preserve newlines and formatting
-            const newValue = before + prefix + suggestion.value + suffix + after
+            const newValue = before + prefix + inserted + suffix + after
 
             // Calculate new cursor position
-            const newCursorPos = wordStart + prefix.length + suggestion.value.length + suffix.length
+            const newCursorPos = wordStart + prefix.length + inserted.length + suffix.length
 
             // Update internal state immediately (no flicker)
             setInternalValue(newValue)
@@ -288,10 +375,7 @@ export function AutocompleteTextarea({
             })
 
             // Debounce external onChange to avoid re-render resetting cursor
-            if (onChangeTimerRef.current) clearTimeout(onChangeTimerRef.current)
-            onChangeTimerRef.current = setTimeout(() => {
-                onChange({ target: { value: newValue } })
-            }, 50)
+            scheduleChange(newValue, 50)
         }
     }
 
@@ -327,12 +411,7 @@ export function AutocompleteTextarea({
         setInternalValue(code)
 
         // onChange를 100ms 디바운스 (Zustand 업데이트 지연으로 렉 방지)
-        if (onChangeTimerRef.current) {
-            clearTimeout(onChangeTimerRef.current)
-        }
-        onChangeTimerRef.current = setTimeout(() => {
-            onChange({ target: { value: code } })
-        }, 100)
+        scheduleChange(code, 100)
 
         if (textareaRef.current) {
             checkAutocomplete(code, textareaRef.current)
@@ -370,12 +449,10 @@ export function AutocompleteTextarea({
     }
 
     // --- Effects ---
-    // 타이머 정리 (컴포넌트 언마운트 시)
+    // 언마운트 시 아직 보내지 않은 입력을 마저 보낸다 (칸을 접거나 창을 닫아도 마지막 글자가 사라지지 않게)
     useEffect(() => {
-        return () => {
-            if (onChangeTimerRef.current) clearTimeout(onChangeTimerRef.current)
-        }
-    }, [])
+        return () => flushChange()
+    }, [flushChange])
 
     // Scroll active suggestion into view
     useEffect(() => {
@@ -435,19 +512,23 @@ export function AutocompleteTextarea({
                     }
 
                     // 일반 줄: 기존 구문 하이라이팅 적용
-                    // Syntax regex: 
-                    // 1. Weights: 1.2::tag:: OR -0.5::tag::
-                    // 2. Fragments: <fragment>
-                    const regex = /(-?[\d.]+::.*?::)|(<[^>]+>)/g
-                    const parts = line.split(regex)
+                    // 1. NAI 가중치: 1.2::tag:: OR -0.5::tag::
+                    // 2. ComfyUI 가중치: (tag:1.2) — 1보다 작으면 파란색
+                    // 3. 조각: <fragment>
+                    const parts = line.split(HIGHLIGHT_RE)
 
                     return (
                         <Fragment key={lineIndex}>
                             {parts.map((part, i) => {
-                                if (part === undefined) return null
+                                if (part === undefined || part === '') return null
                                 let styleClass = ""
-                                if (/^-?[\d.]+::.*::$/.test(part)) {
+                                const comfyWeight = COMFY_WEIGHT_RE.exec(part)
+                                if (NAI_WEIGHT_RE.test(part)) {
                                     styleClass = part.startsWith('-')
+                                        ? "bg-sky-500/30 rounded-[2px]"
+                                        : "bg-pink-500/30 rounded-[2px]"
+                                } else if (comfyWeight) {
+                                    styleClass = parseFloat(comfyWeight[1]) < 1
                                         ? "bg-sky-500/30 rounded-[2px]"
                                         : "bg-pink-500/30 rounded-[2px]"
                                 } else if (/^<[^>]+>$/.test(part)) {
@@ -505,7 +586,7 @@ export function AutocompleteTextarea({
                     onValueChange={handleValueChange}
                     highlight={renderHighlights}
                     padding={12}
-                    textareaId="prompt-editor"
+                    textareaId={textareaId}
 
                     // Core Editor Style
                     style={{
@@ -524,7 +605,12 @@ export function AutocompleteTextarea({
                     textareaClassName="focus:outline-none bg-transparent min-h-full resize-none"
 
                     // Event wiring
-                    onFocus={(e) => textareaRef.current = e.target as HTMLTextAreaElement}
+                    onFocus={(e) => {
+                        textareaRef.current = e.target as HTMLTextAreaElement
+                        // 태그 사전은 처음 누를 때 미리 불러 둔다
+                        void loadTagDictionary().catch(() => { })
+                    }}
+                    onBlur={flushChange}
                     onClick={(e) => {
                         textareaRef.current = e.target as HTMLTextAreaElement
                         scrollToCaret()

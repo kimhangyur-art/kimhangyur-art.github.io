@@ -2,23 +2,13 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { indexedDBStorage } from '@/lib/indexed-db'
 
-export interface CharacterPrompt {
-    id: string
-    name?: string         // Character name (optional)
-    prompt: string        // Character-specific tags
-    negative: string      // Character-specific negative tags
-    enabled: boolean
-    position: { x: number, y: number }  // 0-1 coordinates (0,0 = top-left, 1,1 = bottom-right)
-}
+// 캐릭터 프롬프트 (NAI V4 캐릭터 기능에서 온 것)
+// ComfyUI에는 캐릭터별 프롬프트·위치 기능이 없어서, 켜 둔 캐릭터의 프롬프트를 메인 프롬프트 뒤에 이어 붙인다
+// (lib/comfy-params.ts → services/comfyui-api.ts finalizePrompts).
+// position·positionEnabled 는 예전 데이터와 NAI 메타데이터 호환을 위해 남겨 두지만 그림에는 쓰지 않는다.
 
-interface CharacterPromptState {
-    characters: CharacterPrompt[]
-    addCharacter: (initialData?: Partial<CharacterPrompt>) => void
-    updateCharacter: (id: string, data: Partial<CharacterPrompt>) => void
-    removeCharacter: (id: string) => void
-    setPosition: (id: string, x: number, y: number) => void
-    toggleEnabled: (id: string) => void
-    clearAll: () => void
+function makeId(): string {
+    return Date.now().toString() + Math.random().toString(36).slice(2, 11)
 }
 
 // Color palette for character markers (up to 6 characters)
@@ -66,14 +56,14 @@ export interface CharacterPrompt {
     prompt: string        // Character-specific tags
     negative: string      // Character-specific negative tags
     enabled: boolean
-    position: { x: number, y: number }  // 0-1 coordinates (0,0 = top-left, 1,1 = bottom-right)
+    position: { x: number, y: number }  // 0-1 coordinates (ComfyUI에서는 쓰지 않음, 메타데이터 호환용)
 }
 
 interface CharacterPromptState {
     characters: CharacterPrompt[]
     presets: CharacterPreset[]
     groups: CharacterGroup[]
-    positionEnabled: boolean // 위치 기능 활성화 여부
+    positionEnabled: boolean // 위치 기능 활성화 여부 (ComfyUI에서는 쓰지 않음)
 
     // Active Characters (Stage)
     addCharacter: (initialData?: Partial<CharacterPrompt>) => void
@@ -111,7 +101,7 @@ export const useCharacterPromptStore = create<CharacterPromptState>()(
             positionEnabled: false, // 기본값: 비활성화
 
             addCharacter: (initialData?: Partial<CharacterPrompt>) => {
-                const newId = Date.now().toString() + Math.random().toString(36).substr(2, 9)
+                const newId = makeId()
                 set(state => ({
                     characters: [
                         ...state.characters,
@@ -215,7 +205,7 @@ export const useCharacterPromptStore = create<CharacterPromptState>()(
 
             // Preset Actions
             addPreset: (data) => {
-                const newId = data.id || (Date.now().toString() + Math.random().toString(36).substr(2, 9))
+                const newId = data.id || (makeId())
                 set(state => ({
                     presets: [...state.presets, { ...data, id: newId } as CharacterPreset]
                 }))
@@ -243,7 +233,7 @@ export const useCharacterPromptStore = create<CharacterPromptState>()(
                     // Check if already exists? Maybe allow duplicates for twins etc.
                     // For now, allow duplicates.
 
-                    const newId = Date.now().toString() + Math.random().toString(36).substr(2, 9)
+                    const newId = makeId()
                     return {
                         characters: [
                             ...state.characters,
@@ -262,7 +252,7 @@ export const useCharacterPromptStore = create<CharacterPromptState>()(
 
             // Group Actions
             addGroup: (name) => {
-                const newId = Date.now().toString() + Math.random().toString(36).substr(2, 9)
+                const newId = makeId()
                 set(state => ({
                     groups: [...state.groups, { id: newId, name, collapsed: false, colorIndex: 0 }]
                 }))
@@ -328,7 +318,7 @@ export const useCharacterPromptStore = create<CharacterPromptState>()(
                 const char = characters.find(c => c.id === characterId)
                 if (!char) return
 
-                const newId = Date.now().toString() + Math.random().toString(36).substr(2, 9)
+                const newId = makeId()
                 const presetName = char.name || char.prompt.split(',')[0]?.trim() || 'Unnamed'
 
                 set(state => ({
@@ -353,6 +343,17 @@ export const useCharacterPromptStore = create<CharacterPromptState>()(
                 }
                 
                 if (state) {
+                    // 빠진 값 채우기 (예전 버전 데이터)
+                    state.characters = (Array.isArray(state.characters) ? state.characters : []).map(c => ({
+                        ...c,
+                        prompt: c.prompt ?? '',
+                        negative: c.negative ?? '',
+                        enabled: c.enabled ?? true,
+                        position: c.position ?? { x: 0.5, y: 0.5 },
+                    }))
+                    state.presets = Array.isArray(state.presets) ? state.presets : []
+                    state.groups = Array.isArray(state.groups) ? state.groups : []
+
                     // 정상 복원 로그
                     const presetCount = state.presets?.length || 0
                     const charCount = state.characters?.length || 0

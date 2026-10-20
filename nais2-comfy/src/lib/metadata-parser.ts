@@ -544,6 +544,9 @@ async function extractTextChunkMetadata(bytes: Uint8Array): Promise<NAIMetadata 
                 } else if (keyword === 'Source') {
                     // Store model source temporarily, will be added after metadata is created
                     modelSource = value
+                } else if (keyword === 'prompt') {
+                    // ComfyUI API 작업 그래프 (Comment 가 없을 때만 쓴다)
+                    comfyPrompt = value
                 }
             }
         }
@@ -555,15 +558,29 @@ async function extractTextChunkMetadata(bytes: Uint8Array): Promise<NAIMetadata 
         if (type === 'IEND') break
     }
 
-    // Add model source if found
+    // Add model source if found (우리 그림이면 Source 도 체크포인트 이름이다)
     if (metadata && modelSource) {
         metadata.model = modelSource
     }
 
     // If this image was produced by NAIS2, trust our own nais2-params chunk
     // (qualityToggle / ucPreset / promptParts as we sent them) over any heuristic.
-    const nais2 = metadata ? readNais2Params(bytes) : null
-    if (metadata && nais2) {
+    // Comment 가 없는 그림도 nais2-params 만으로 읽는다. ComfyUI 그래프에서 읽은 그림에는 섞지 않는다
+    // (그래프의 글은 품질 태그·UC가 이미 붙은 최종 글이라서).
+    const nais2 = readNais2Params(bytes)
+
+    // Comment·parameters 가 없으면 ComfyUI 작업 그래프에서 찾는다
+    if (!metadata && comfyPrompt) {
+        try {
+            metadata = parseComfyPromptGraph(JSON.parse(comfyPrompt))
+        } catch (e) {
+            console.warn('[metadata] ComfyUI prompt graph parse failed:', e)
+        }
+    }
+    if (!metadata && nais2) {
+        metadata = { source: 'text_chunk', raw: { nais2 } }
+    }
+    if (metadata && nais2 && metadata.raw?.comfyuiPrompt === undefined) {
         if (typeof nais2.qualityToggle === 'boolean') metadata.qualityToggle = nais2.qualityToggle
         if (typeof nais2.ucPreset === 'number') metadata.ucPreset = nais2.ucPreset
         if (nais2.promptParts && typeof nais2.promptParts === 'object') {
@@ -575,6 +592,15 @@ async function extractTextChunkMetadata(bytes: Uint8Array): Promise<NAIMetadata 
                 negative: pp.negative,
                 inpainting: pp.inpainting,
             }
+            // Comment 없이 nais2-params 만 있으면 칸들을 합쳐 프롬프트로 보여 준다
+            if (metadata.prompt === undefined) {
+                const joined = [pp.base, pp.additional, pp.detail]
+                    .map((s) => (s ?? '').trim().replace(/^,+|,+$/g, '').trim())
+                    .filter(Boolean)
+                    .join(', ')
+                if (joined) metadata.prompt = joined
+            }
+            if (metadata.negativePrompt === undefined && pp.negative) metadata.negativePrompt = pp.negative
         }
     }
 
@@ -789,6 +815,375 @@ function convertNAIFormat(data: Record<string, unknown>): NAIMetadata {
         }))
     }
 
+    // NAIS2 Comfy 가 넣은 'comfy' 항목
+    if (data.comfy && typeof data.comfy === 'object') {
+        applyComfyExtra(metadata, data.comfy as Record<string, unknown>)
+    }
+
+    return metadata
+}
+
+function finiteOr(v: unknown, fallback: number): number {
+    const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN
+    return Number.isFinite(n) ? n : fallback
+}
+
+function readLoras(v: unknown): MetaLora[] | undefined {
+    if (!Array.isArray(v)) return undefined
+    return v
+        .filter((l): l is Record<string, unknown> => !!l && typeof l === 'object' && typeof (l as Record<string, unknown>).name === 'string')
+        .map((l) => ({
+            name: String(l.name),
+            strengthModel: finiteOr(l.strengthModel, 1),
+            strengthClip: finiteOr(l.strengthClip, 1),
+        }))
+}
+
+const HIRES_METHODS: HiresSettings['method'][] = ['latent', 'pixel', 'model']
+
+function readHires(v: unknown): HiresSettings | null {
+    if (!v || typeof v !== 'object') return null
+    const h = v as Record<string, unknown>
+    const method = HIRES_METHODS.includes(h.method as HiresSettings['method']) ? (h.method as HiresSettings['method']) : 'latent'
+    return {
+        enabled: h.enabled !== false,
+        method,
+        scale: finiteOr(h.scale, 1.5),
+        denoise: finiteOr(h.denoise, 0.4),
+        steps: Math.round(finiteOr(h.steps, 15)),
+        upscaleModel: typeof h.upscaleModel === 'string' ? h.upscaleModel : '',
+    }
+}
+
+/** Comment.comfy (NAIS2 Comfy 그림) → 메타데이터 칸 */
+function applyComfyExtra(metadata: NAIMetadata, c: Record<string, unknown>) {
+    if (typeof c.checkpoint === 'string' && c.checkpoint) {
+        metadata.checkpoint = c.checkpoint
+        metadata.model = c.checkpoint
+    }
+    const loras = readLoras(c.loras)
+    if (loras) metadata.loras = loras
+    if (typeof c.clipSkip === 'number' && Number.isFinite(c.clipSkip)) metadata.clipSkip = c.clipSkip
+    if ('hires' in c) metadata.hires = readHires(c.hires)
+    if (c.variant && typeof c.variant === 'object') {
+        const vr = c.variant as Record<string, unknown>
+        const values: Record<string, string> = {}
+        if (vr.values && typeof vr.values === 'object') {
+            for (const [k, val] of Object.entries(vr.values as Record<string, unknown>)) values[k] = String(val)
+        }
+        metadata.variant = { label: typeof vr.label === 'string' ? vr.label : '', values }
+    }
+    if (c.upscaledFrom && typeof c.upscaledFrom === 'object') {
+        const u = c.upscaledFrom as Record<string, unknown>
+        metadata.upscaledFrom = {
+            scale: finiteOr(u.scale, 0),
+            denoise: finiteOr(u.denoise, 0),
+            method: typeof u.method === 'string' ? u.method : '',
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ComfyUI 'prompt' 조각 (API 형식 작업 그래프) 읽기
+//
+// { "3": { "class_type": "KSampler", "inputs": { "seed": 1, "model": ["4", 0], ... } }, ... }
+// 연결은 [노드 번호, 출력 번호] 배열이다.
+
+interface GraphNode {
+    class_type?: string
+    inputs?: Record<string, unknown>
+}
+
+type Graph = Record<string, GraphNode>
+type GraphLink = [string, number]
+
+function isLink(v: unknown): v is GraphLink {
+    return Array.isArray(v) && v.length === 2 && (typeof v[0] === 'string' || typeof v[0] === 'number') && typeof v[1] === 'number'
+}
+
+function linkedNode(g: Graph, v: unknown): { id: string; node: GraphNode } | null {
+    if (!isLink(v)) return null
+    const id = String(v[0])
+    const node = g[id]
+    return node ? { id, node } : null
+}
+
+const SAMPLER_CLASSES = new Set(['KSampler', 'KSamplerAdvanced'])
+
+function isSamplerNode(n: GraphNode): boolean {
+    if (!n.class_type) return false
+    if (SAMPLER_CLASSES.has(n.class_type)) return true
+    const i = n.inputs ?? {}
+    return 'latent_image' in i && 'positive' in i && 'negative' in i && ('seed' in i || 'noise_seed' in i)
+}
+
+function isEmptyLatent(n: GraphNode): boolean {
+    return /^Empty.*Latent/i.test(n.class_type ?? '')
+}
+
+/** 글·숫자 값. 연결이면 한 번만 따라가 원시값 노드(Primitive 등)의 값을 읽는다 */
+function scalar(g: Graph, v: unknown, ...keys: string[]): string | number | boolean | undefined {
+    if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return v
+    const ln = linkedNode(g, v)
+    if (!ln) return undefined
+    const inputs = ln.node.inputs ?? {}
+    for (const k of [...keys, 'value', 'text', 'string', 'Text', 'STRING', 'prompt', 'int', 'float', 'seed', 'number']) {
+        const x = inputs[k]
+        if (typeof x === 'string' || typeof x === 'number' || typeof x === 'boolean') return x
+    }
+    return undefined
+}
+
+function num(g: Graph, v: unknown, ...keys: string[]): number | undefined {
+    const s = scalar(g, v, ...keys)
+    const n = typeof s === 'number' ? s : typeof s === 'string' && s.trim() !== '' ? Number(s) : NaN
+    return Number.isFinite(n) ? n : undefined
+}
+
+function str(g: Graph, v: unknown, ...keys: string[]): string | undefined {
+    const s = scalar(g, v, ...keys)
+    return typeof s === 'string' ? s : typeof s === 'number' ? String(s) : undefined
+}
+
+// 그림·잠재 이미지가 흘러 들어오는 입력 (앞쪽으로 따라갈 때 이 순서로 고른다)
+const LATENT_INPUTS = ['latent_image', 'samples', 'latent', 'pixels', 'image', 'images', 'samples_to', 'samples1', 'samples_from']
+
+interface LatentTrace {
+    /** 처음 만난 빈 잠재 이미지 또는 샘플러 */
+    kind: 'empty' | 'sampler' | 'none'
+    id?: string
+    /** 지나온 노드 (가까운 것부터) */
+    path: Array<{ id: string; node: GraphNode }>
+}
+
+function traceLatent(g: Graph, start: unknown): LatentTrace {
+    const path: LatentTrace['path'] = []
+    const seen = new Set<string>()
+    let cur = linkedNode(g, start)
+    while (cur && !seen.has(cur.id) && path.length < 32) {
+        seen.add(cur.id)
+        if (isEmptyLatent(cur.node)) return { kind: 'empty', id: cur.id, path }
+        if (isSamplerNode(cur.node)) return { kind: 'sampler', id: cur.id, path }
+        path.push(cur)
+        const inputs = cur.node.inputs ?? {}
+        const key = LATENT_INPUTS.find((k) => isLink(inputs[k]))
+        cur = key ? linkedNode(g, inputs[key]) : null
+    }
+    return { kind: 'none', path }
+}
+
+/** 조건(conditioning)을 따라가 프롬프트 글과 그 글을 넣은 노드를 찾는다 */
+function traceText(g: Graph, start: unknown, role: 'positive' | 'negative'): { text?: string; encoder: GraphNode } | null {
+    const seen = new Set<string>()
+    let cur = linkedNode(g, start)
+    for (let depth = 0; cur && depth < 16 && !seen.has(cur.id); depth++) {
+        seen.add(cur.id)
+        const inputs = cur.node.inputs ?? {}
+        if ('text' in inputs || 'text_g' in inputs || 'text_l' in inputs) {
+            // 글이 다른 노드에서 오는데 한 번에 못 읽으면 text 없이 돌려준다 (CLIP skip 찾기에는 쓴다)
+            return { text: str(g, inputs.text) ?? str(g, inputs.text_g) ?? str(g, inputs.text_l), encoder: cur.node }
+        }
+        // ControlNet·영역 지정·합치기 같은 중간 노드는 지나간다
+        const key = [role, 'conditioning', 'conditioning_to', 'conditioning_1', 'conditioning_from', 'base_conditioning'].find((k) => isLink(inputs[k]))
+        cur = key ? linkedNode(g, inputs[key]) : null
+    }
+    return null
+}
+
+interface ModelChainInfo {
+    checkpoint?: string
+    loras: MetaLora[]
+    rescaleCfg?: number
+    /** ModelSamplingDiscrete 로 v-prediction 을 켰는지 */
+    vpred: boolean
+}
+
+/** 샘플러의 model 입력에서 거꾸로 LoRA·ModelSamplingDiscrete·RescaleCFG 를 지나 체크포인트까지 */
+function traceModel(g: Graph, start: unknown): ModelChainInfo {
+    const loras: MetaLora[] = []
+    let checkpoint: string | undefined
+    let rescaleCfg: number | undefined
+    let vpred = false
+    const seen = new Set<string>()
+    let cur = linkedNode(g, start)
+    while (cur && !seen.has(cur.id) && seen.size < 64) {
+        seen.add(cur.id)
+        const inputs = cur.node.inputs ?? {}
+        const type = cur.node.class_type ?? ''
+        if (type === 'ModelSamplingDiscrete' && str(g, inputs.sampling, 'sampling') === 'v_prediction') vpred = true
+        if ('ckpt_name' in inputs || 'unet_name' in inputs) {
+            checkpoint = str(g, inputs.ckpt_name, 'ckpt_name') ?? str(g, inputs.unet_name, 'unet_name')
+            break
+        }
+        if ('lora_name' in inputs) {
+            const name = str(g, inputs.lora_name, 'lora_name')
+            if (name) {
+                loras.push({
+                    name,
+                    strengthModel: num(g, inputs.strength_model, 'strength_model') ?? 1,
+                    strengthClip: type === 'LoraLoaderModelOnly' ? 0 : num(g, inputs.strength_clip, 'strength_clip') ?? 1,
+                })
+            }
+        }
+        if (type === 'RescaleCFG') rescaleCfg = num(g, inputs.multiplier, 'multiplier')
+        cur = linkedNode(g, inputs.model)
+    }
+    // 샘플러 쪽에서 거꾸로 모았으니 적용 순서(체크포인트 쪽부터)로 뒤집는다
+    return { checkpoint, loras: loras.reverse(), rescaleCfg, vpred }
+}
+
+/** 프롬프트 노드의 clip 입력에서 CLIPSetLastLayer 를 찾는다 (stop_at_clip_layer -2 → CLIP skip 2) */
+function traceClipSkip(g: Graph, encoder: GraphNode | undefined): number | undefined {
+    if (!encoder) return undefined
+    const seen = new Set<string>()
+    let cur = linkedNode(g, encoder.inputs?.clip)
+    let reachedLoader = false
+    while (cur && !seen.has(cur.id) && seen.size < 64) {
+        seen.add(cur.id)
+        const inputs = cur.node.inputs ?? {}
+        if (cur.node.class_type === 'CLIPSetLastLayer') {
+            const layer = num(g, inputs.stop_at_clip_layer, 'stop_at_clip_layer')
+            return layer !== undefined ? Math.max(1, Math.abs(Math.round(layer))) : undefined
+        }
+        if ('ckpt_name' in inputs || 'clip_name' in inputs || 'clip_name1' in inputs) {
+            reachedLoader = true
+            break
+        }
+        cur = linkedNode(g, inputs.clip)
+    }
+    // 끝까지 따라갔는데 CLIPSetLastLayer 가 없으면 건너뛰지 않은 것
+    return reachedLoader ? 1 : undefined
+}
+
+function round2(n: number): number {
+    return Math.round(n * 100) / 100
+}
+
+/** 1차 샘플러 다음에 이어지는 고화질 단계(2차 샘플러)를 찾는다 */
+function findHires(g: Graph, samplers: Array<{ id: string; node: GraphNode }>, baseId: string, baseWidth?: number): HiresSettings | null {
+    for (const s of samplers) {
+        if (s.id === baseId) continue
+        const tr = traceLatent(g, s.node.inputs?.latent_image)
+        if (tr.kind !== 'sampler' || tr.id !== baseId) continue
+        const inputs = s.node.inputs ?? {}
+        let method: HiresSettings['method'] = 'pixel'
+        let scale: number | undefined
+        let upscaleModel = ''
+        for (const step of tr.path) {
+            const si = step.node.inputs ?? {}
+            switch (step.node.class_type) {
+                case 'LatentUpscaleBy':
+                    method = 'latent'
+                    scale = num(g, si.scale_by, 'scale_by') ?? scale
+                    break
+                case 'LatentUpscale':
+                    method = 'latent'
+                    if (scale === undefined && baseWidth) {
+                        const w = num(g, si.width, 'width')
+                        if (w) scale = w / baseWidth
+                    }
+                    break
+                case 'ImageUpscaleWithModel': {
+                    method = 'model'
+                    const loader = linkedNode(g, si.upscale_model)
+                    upscaleModel = str(g, loader?.node.inputs?.model_name, 'model_name') ?? ''
+                    break
+                }
+                case 'ImageScaleBy':
+                    scale = num(g, si.scale_by, 'scale_by') ?? scale
+                    break
+                case 'ImageScale':
+                    if (scale === undefined && baseWidth) {
+                        const w = num(g, si.width, 'width')
+                        if (w) scale = w / baseWidth
+                    }
+                    break
+            }
+        }
+        return {
+            enabled: true,
+            method,
+            scale: round2(scale ?? 1.5),
+            denoise: round2(num(g, inputs.denoise, 'denoise') ?? 0.5),
+            steps: Math.round(num(g, inputs.steps, 'steps') ?? 15),
+            upscaleModel,
+        }
+    }
+    return null
+}
+
+/**
+ * ComfyUI API 작업 그래프에서 생성 설정을 찾아 NAIMetadata 로 만든다.
+ * raw.comfy 도 채우므로 paramsFromMetadata(다시 생성·고화질로 다시 그리기)가 그대로 쓸 수 있다.
+ * 프롬프트는 ComfyUI가 받은 최종 글이라 품질 태그·UC 프리셋은 끈 것으로 둔다.
+ */
+export function parseComfyPromptGraph(graph: unknown): NAIMetadata | null {
+    if (!graph || typeof graph !== 'object' || Array.isArray(graph)) return null
+    const g = graph as Graph
+    const samplers = Object.entries(g)
+        .filter(([, n]) => n && typeof n === 'object' && isSamplerNode(n))
+        .map(([id, node]) => ({ id, node }))
+        .sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0))
+    if (samplers.length === 0) return null
+
+    // 빈 잠재 이미지에서 시작하는 샘플러가 1차 생성. 여러 개면 첫 번째, 없으면 그냥 첫 샘플러
+    const traced = samplers.map((s) => ({ ...s, trace: traceLatent(g, s.node.inputs?.latent_image) }))
+    const main = traced.find((s) => s.trace.kind === 'empty') ?? traced[0]
+    const ks = main.node.inputs ?? {}
+
+    const latentNode = main.trace.kind === 'empty' && main.trace.id
+        ? g[main.trace.id]
+        : Object.values(g).find((n) => n && typeof n === 'object' && isEmptyLatent(n))
+    const width = latentNode ? num(g, latentNode.inputs?.width, 'width') : undefined
+    const height = latentNode ? num(g, latentNode.inputs?.height, 'height') : undefined
+
+    const pos = traceText(g, ks.positive, 'positive')
+    const neg = traceText(g, ks.negative, 'negative')
+    const model = traceModel(g, ks.model)
+    const clipSkip = traceClipSkip(g, pos?.encoder ?? neg?.encoder)
+    const hires = findHires(g, samplers, main.id, width)
+
+    const seed = num(g, ks.seed, 'seed') ?? num(g, ks.noise_seed, 'noise_seed')
+    const steps = num(g, ks.steps, 'steps')
+    const cfg = num(g, ks.cfg, 'cfg')
+    const sampler = str(g, ks.sampler_name, 'sampler_name')
+    const scheduler = str(g, ks.scheduler, 'scheduler')
+
+    const metadata: NAIMetadata = {
+        source: 'text_chunk',
+        qualityToggle: false,
+        ucPreset: 4,
+        loras: model.loras,
+        hires,
+        raw: {
+            comfy: {
+                checkpoint: model.checkpoint,
+                // 그래프에 v-prediction 이 보이면 그 계열로, 아니면 체크포인트 이름으로 짐작하게 둔다
+                family: model.vpred ? 'noobai-vpred' : 'auto',
+                loras: model.loras,
+                clipSkip,
+                hires,
+                positive: pos?.text ?? '',
+                negative: neg?.text ?? '',
+            },
+            comfyuiPrompt: graph,
+        },
+    }
+    if (pos?.text !== undefined) metadata.prompt = pos.text
+    if (neg?.text !== undefined) metadata.negativePrompt = neg.text
+    if (model.checkpoint) {
+        metadata.checkpoint = model.checkpoint
+        metadata.model = model.checkpoint
+    }
+    if (clipSkip !== undefined) metadata.clipSkip = clipSkip
+    if (model.rescaleCfg !== undefined) metadata.cfgRescale = model.rescaleCfg
+    if (seed !== undefined) metadata.seed = seed
+    if (steps !== undefined) metadata.steps = steps
+    if (cfg !== undefined) metadata.cfgScale = cfg
+    if (sampler) metadata.sampler = sampler
+    if (scheduler) metadata.scheduler = scheduler
+    if (width) metadata.width = width
+    if (height) metadata.height = height
     return metadata
 }
 

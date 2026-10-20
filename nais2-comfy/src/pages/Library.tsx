@@ -42,17 +42,18 @@ const dropAnimation = {
 }
 
 import { LibraryRenameDialog } from '@/components/library/LibraryRenameDialog'
-import { ImageReferenceDialog } from '@/components/metadata/ImageReferenceDialog'
 import { MetadataDialog } from '@/components/metadata/MetadataDialog'
 import { readFile } from '@tauri-apps/plugin-fs'
-
-// ... existing imports
+import { upscaleExisting } from '@/lib/comfy-params'
+import { bytesToBase64 } from '@/lib/output-save'
+import { imageMimeType } from '@/lib/image-utils'
 
 export default function Library() {
     const { t } = useTranslation()
     const { 
         items, 
         addItem, 
+        insertItemAfter,
         setItems, 
         updateItem, 
         gridColumns, 
@@ -85,10 +86,10 @@ export default function Library() {
     // Dialog States
     const [renameDialogOpen, setRenameDialogOpen] = useState(false)
     const [selectedItemForRename, setSelectedItemForRename] = useState<LibraryItem | null>(null)
-    const [imageRefDialogOpen, setImageRefDialogOpen] = useState(false)
-    const [selectedImageRef, setSelectedImageRef] = useState<string | null>(null)
     const [metadataDialogOpen, setMetadataDialogOpen] = useState(false)
     const [selectedImageForMetadata, setSelectedImageForMetadata] = useState<string | undefined>()
+    // 고화질로 다시 그리는 중인 그림
+    const [upscalingIds, setUpscalingIds] = useState<string[]>([])
 
     // Fullscreen viewer state
     const [viewerImageSrc, setViewerImageSrc] = useState<string | null>(null)
@@ -285,19 +286,9 @@ export default function Library() {
                 })
             }
         }
-    }, [addItem, t])
+    }, [addItem, t, libraryPath, useAbsoluteLibraryPath])
 
     const activeItem = activeId ? items.find(i => i.id === activeId) : null
-
-    // Helper
-    const arrayBufferToBase64 = (buffer: Uint8Array): string => {
-        let binary = ''
-        const len = buffer.byteLength
-        for (let i = 0; i < len; i++) {
-            binary += String.fromCharCode(buffer[i])
-        }
-        return btoa(binary)
-    }
 
     // Handlers
     const handleRenameClick = (item: LibraryItem) => {
@@ -318,23 +309,53 @@ export default function Library() {
         }
     }
 
-    const handleAddRefClick = async (item: LibraryItem) => {
+    // 고화질로 다시 그리기: 그림 자체에서 시작하므로 시드가 없어도 된다. 원본 옆에 새 파일로 저장하고 라이브러리에도 넣는다
+    const handleUpscale = async (item: LibraryItem) => {
+        if (upscalingIds.includes(item.id)) return
+        setUpscalingIds(prev => [...prev, item.id])
+        const { upscaleScale, upscaleDenoise } = useSettingsStore.getState()
+        toast({
+            title: t('comfy.upscale.startTitle', '고화질로 다시 그리는 중…'),
+            description: t('comfy.upscale.startDesc', '원본은 그대로 두고 새 파일로 저장합니다 ({{scale}}배, 다듬기 강도 {{denoise}})', { scale: upscaleScale, denoise: upscaleDenoise }),
+        })
         try {
-            const data = await readFile(item.path)
-            const base64 = arrayBufferToBase64(data)
-            setSelectedImageRef(`data:image/png;base64,${base64}`)
-            setImageRefDialogOpen(true)
+            const r = await upscaleExisting({ path: item.path })
+            if (r.success && r.saved) {
+                const fileName = r.saved.path.split(/[\\/]/).pop() ?? ''
+                if (r.saved.saved) {
+                    insertItemAfter(item.id, {
+                        id: crypto.randomUUID(),
+                        name: t('comfy.upscale.libraryName', '{{name}} (고화질)', { name: item.name }),
+                        path: r.saved.path,
+                        width: r.width ?? 0,
+                        height: r.height ?? 0,
+                        createdAt: Date.now(),
+                    })
+                }
+                toast({
+                    title: t('comfy.upscale.done', '고화질 그림을 저장했습니다'),
+                    description: r.saved.saved
+                        ? t('comfy.upscale.doneLibrary', '{{file}} · 라이브러리에서 원본 바로 뒤에 넣었습니다', { file: fileName })
+                        : t('comfy.upscale.doneDownload', '파일로 저장하지 못해 내려받기로 대신했습니다'),
+                    variant: 'success',
+                })
+            } else if (r.interrupted) {
+                toast({ title: t('comfy.upscale.stopped', '고화질로 다시 그리기를 멈췄습니다') })
+            } else {
+                toast({ title: t('comfy.upscale.failed', '고화질로 다시 그리지 못했습니다'), description: r.error, variant: 'destructive' })
+            }
         } catch (e) {
-            console.error('Failed to load for ref:', e)
-            toast({ title: t('library.error', '오류 발생'), variant: 'destructive' })
+            console.error('Upscale failed:', e)
+            toast({ title: t('comfy.upscale.failed', '고화질로 다시 그리지 못했습니다'), description: (e as Error)?.message, variant: 'destructive' })
+        } finally {
+            setUpscalingIds(prev => prev.filter(id => id !== item.id))
         }
     }
 
     const handleLoadMetadata = async (item: LibraryItem) => {
         try {
             const data = await readFile(item.path)
-            const base64 = arrayBufferToBase64(data)
-            setSelectedImageForMetadata(`data:image/png;base64,${base64}`)
+            setSelectedImageForMetadata(`data:${imageMimeType(item.path)};base64,${bytesToBase64(data)}`)
             setMetadataDialogOpen(true)
         } catch (e) {
             console.error('Failed to load metadata:', e)
@@ -578,8 +599,9 @@ export default function Library() {
                                     key={item.id}
                                     item={item}
                                     onRename={handleRenameClick}
-                                    onAddRef={handleAddRefClick}
                                     onLoadMetadata={handleLoadMetadata}
+                                    onUpscale={handleUpscale}
+                                    isBusy={upscalingIds.includes(item.id)}
                                     onImageClick={(imgUrl) => {
                                         if (isEditMode && !item.isStack) {
                                             // Edit mode: toggle selection (stacks cannot be selected)
@@ -670,12 +692,6 @@ export default function Library() {
                 onOpenChange={setRenameDialogOpen}
                 initialName={selectedItemForRename?.name || ''}
                 onConfirm={handleRenameConfirm}
-            />
-
-            <ImageReferenceDialog
-                open={imageRefDialogOpen}
-                onOpenChange={setImageRefDialogOpen}
-                imageBase64={selectedImageRef}
             />
 
             <MetadataDialog
