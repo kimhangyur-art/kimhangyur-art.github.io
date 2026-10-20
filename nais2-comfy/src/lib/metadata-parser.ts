@@ -6,9 +6,15 @@
  * 2. Stealth PNGInfo in alpha channel (for persistence through SNS)
  *
  * This parser extracts metadata from both sources.
+ *
+ * NAIS2 Comfy:
+ * - 우리 그림의 Comment JSON 에는 'comfy' 항목(체크포인트·LoRA·CLIP skip·고화질 단계·변형)이 더 있다.
+ * - Comment 가 없어도 nais2-params 조각만 있으면 읽는다.
+ * - Comment·parameters 가 모두 없으면 ComfyUI가 넣은 'prompt' 조각(API 작업 그래프)에서 설정을 찾아낸다.
  */
 
 import { readNais2Params } from '@/lib/nais2-png-meta'
+import type { HiresSettings } from '@/services/comfyui-api'
 
 /**
  * Decompress gzip data using native Web API or fallback
@@ -134,6 +140,25 @@ export interface NAIMetadata {
         negative?: string
         inpainting?: string
     }
+
+    // ComfyUI (NAIS2 Comfy 그림의 Comment.comfy, 또는 ComfyUI 'prompt' 그래프에서)
+    /** 체크포인트 파일 이름. 있으면 model 도 같은 값 */
+    checkpoint?: string
+    loras?: MetaLora[]
+    /** 1 = 건너뛰지 않음, 2 = CLIP skip 2 */
+    clipSkip?: number
+    /** 고화질 단계 (없으면 null 또는 undefined) */
+    hires?: HiresSettings | null
+    /** 변형 모드에서 무엇을 바꾼 그림인지 */
+    variant?: { label: string; values: Record<string, string> }
+    /** '고화질로 다시 그리기'로 만든 그림이면 그때 값 */
+    upscaledFrom?: { scale: number; denoise: number; method: string }
+}
+
+export interface MetaLora {
+    name: string
+    strengthModel: number
+    strengthClip: number
 }
 
 
@@ -477,6 +502,7 @@ async function extractTextChunkMetadata(bytes: Uint8Array): Promise<NAIMetadata 
     let offset = 8
     let metadata: NAIMetadata | null = null
     let modelSource: string | null = null
+    let comfyPrompt: string | null = null
 
     while (offset < bytes.length) {
         // Read chunk length (4 bytes, big-endian)
