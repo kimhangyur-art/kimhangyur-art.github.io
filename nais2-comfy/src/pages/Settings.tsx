@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,7 +13,7 @@ import {
 } from '@/components/ui/select'
 import { Tip } from '@/components/ui/tooltip'
 import {
-    Key,
+    Server,
     Settings2,
     Save,
     Check,
@@ -22,40 +23,34 @@ import {
     Monitor,
     Languages,
     Loader2,
-    Coins,
     FolderOpen,
     Palette,
     Type,
-    Zap,
+    Eye,
     RotateCcw,
     Info,
     RefreshCw,
     Download,
     Timer,
-    Sparkles,
     Keyboard,
     Upload,
     Database,
     AlertTriangle,
     HardDrive,
-    MessagesSquare,
     ExternalLink,
 } from 'lucide-react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { Slider } from '@/components/ui/slider'
 import { cn } from '@/lib/utils'
 import { useThemeStore } from '@/stores/theme-store'
-import { useAuthStore } from '@/stores/auth-store'
 import { useSettingsStore } from '@/stores/settings-store'
-import { useShortcutStore, SHORTCUT_ACTIONS, formatKeyBinding, type ShortcutAction, type KeyBinding } from '@/stores/shortcut-store'
+import { useComfyStore } from '@/stores/comfy-store'
+import { useShortcutStore, SHORTCUT_ACTIONS, SHORTCUT_LABELS, DEFAULT_BINDINGS, formatKeyBinding, type ShortcutAction, type KeyBinding } from '@/stores/shortcut-store'
 import { toast } from '@/components/ui/use-toast'
-import NovelAILogo from '@/assets/novelai_logo.svg'
-import GeminiIcon from '@/assets/gemini-color.svg'
+import { ComfySettingsSection } from '@/components/comfy/ComfySettingsSection'
 import { open, save } from '@tauri-apps/plugin-dialog'
-import { check } from '@tauri-apps/plugin-updater'
 import { relaunch } from '@tauri-apps/plugin-process'
 import { getVersion } from '@tauri-apps/api/app'
-import { useUpdateStore, setCurrentUpdateObject, installPendingUpdate } from '@/stores/update-store'
 import { exportAllData, importAllData, getStoreSizes } from '@/lib/indexed-db'
 import { writeTextFile, readTextFile } from '@tauri-apps/plugin-fs'
 
@@ -65,37 +60,51 @@ const LANGUAGES = [
     { code: 'ja', name: '日本語' },
 ]
 
-type SettingsSection = 'general' | 'appearance' | 'api' | 'storage' | 'shortcuts' | 'backup'
+type SettingsSection = 'comfy' | 'general' | 'appearance' | 'storage' | 'shortcuts' | 'backup'
 
-const SECTIONS = [
-    { id: 'general' as const, icon: Settings2, labelKey: 'settingsPage.sections.general' },
-    { id: 'appearance' as const, icon: Palette, labelKey: 'settingsPage.sections.appearance' },
-    { id: 'api' as const, icon: Key, labelKey: 'settingsPage.sections.api' },
-    { id: 'storage' as const, icon: FolderOpen, labelKey: 'settingsPage.sections.storage' },
-    { id: 'shortcuts' as const, icon: Keyboard, labelKey: 'settingsPage.sections.shortcuts' },
-    { id: 'backup' as const, icon: Database, labelKey: 'settingsPage.backup.title' },
+const SECTIONS: { id: SettingsSection; icon: typeof Server; labelKey: string; defaultLabel: string }[] = [
+    { id: 'comfy', icon: Server, labelKey: 'settingsPage.sections.comfy', defaultLabel: 'ComfyUI' },
+    { id: 'general', icon: Settings2, labelKey: 'settingsPage.sections.general', defaultLabel: '일반' },
+    { id: 'appearance', icon: Palette, labelKey: 'settingsPage.sections.appearance', defaultLabel: '외관' },
+    { id: 'storage', icon: FolderOpen, labelKey: 'settingsPage.sections.storage', defaultLabel: '저장' },
+    { id: 'shortcuts', icon: Keyboard, labelKey: 'settingsPage.sections.shortcuts', defaultLabel: '단축키' },
+    { id: 'backup', icon: Database, labelKey: 'settingsPage.backup.title', defaultLabel: '백업' },
 ]
+
+const DEFAULT_SECTION: SettingsSection = 'comfy'
+
+function parseSection(v: string | null): SettingsSection | null {
+    return SECTIONS.some(s => s.id === v) ? (v as SettingsSection) : null
+}
+
+/** 단축키 이름: 번역 파일에 있으면 그것, 없으면 한국어 기본 이름 */
+function shortcutName(t: ReturnType<typeof useTranslation>['t'], action: ShortcutAction): string {
+    return t(DEFAULT_BINDINGS[action].description, SHORTCUT_LABELS[action])
+}
 
 export default function Settings() {
     const { t, i18n } = useTranslation()
     const { theme, setTheme } = useThemeStore()
-    const { token, isVerified, anlas, isLoading, verifyAndSave } = useAuthStore()
-    const { savePath, autoSave, setSavePath, setAutoSave, promptFontSize, setPromptFontSize, useStreaming, setUseStreaming, generationDelay, setGenerationDelay, geminiApiKey, setGeminiApiKey, useAbsolutePath, libraryPath, useAbsoluteLibraryPath, setLibraryPath, imageFormat, setImageFormat } = useSettingsStore()
+    const { savePath, autoSave, setSavePath, setAutoSave, promptFontSize, setPromptFontSize, useStreaming, setUseStreaming, generationDelay, setGenerationDelay, useAbsolutePath, libraryPath, useAbsoluteLibraryPath, setLibraryPath } = useSettingsStore()
     const { bindings, enabled: shortcutsEnabled, setBinding, resetBinding, resetAllBindings, setEnabled: setShortcutsEnabled } = useShortcutStore()
-    const [localGeminiKey, setLocalGeminiKey] = useState(geminiApiKey)
+    const comfyUrl = useComfyStore(s => s.url)
+    const comfyStatus = useComfyStore(s => s.status)
+    const comfyVersion = useComfyStore(s => s.version)
 
-    const [activeSection, setActiveSection] = useState<SettingsSection>('general')
-    const [apiToken, setApiToken] = useState(token)
-    const [tokenStatus, setTokenStatus] = useState<'idle' | 'valid' | 'invalid' | 'verifying'>(
-        isVerified ? 'valid' : 'idle'
-    )
+    // 지금 보이는 구역은 주소의 ?section= 으로 정한다 (예: /settings?section=comfy)
+    const [searchParams, setSearchParams] = useSearchParams()
+    const activeSection: SettingsSection = parseSection(searchParams.get('section')) ?? DEFAULT_SECTION
+    const setActiveSection = (section: SettingsSection) => {
+        const next = new URLSearchParams(searchParams)
+        next.set('section', section)
+        setSearchParams(next, { replace: true })
+    }
+
     const [localSavePath, setLocalSavePath] = useState(savePath)
     const [isAbsolutePath, setIsAbsolutePath] = useState(useAbsolutePath)
     const [localLibraryPath, setLocalLibraryPath] = useState(libraryPath)
     const [isAbsoluteLibraryPath, setIsAbsoluteLibraryPath] = useState(useAbsoluteLibraryPath)
     const [appVersion, setAppVersion] = useState('')
-    const [isCheckingUpdate, setIsCheckingUpdate] = useState(false)
-    const { pendingUpdate, isDownloading, setPendingUpdate, setIsDownloading, setDownloadProgress } = useUpdateStore()
 
     // 키바인드 편집 상태
     const [editingAction, setEditingAction] = useState<ShortcutAction | null>(null)
@@ -121,24 +130,16 @@ export default function Settings() {
         }
     }, [activeSection])
 
+    // 저장 경로가 다른 곳(백업 복원 등)에서 바뀌면 입력 칸도 맞춘다
     useEffect(() => {
-        if (token) {
-            setApiToken(token)
-            if (isVerified) {
-                setTokenStatus('valid')
-            }
-        }
-    }, [token, isVerified])
+        setLocalSavePath(savePath)
+        setIsAbsolutePath(useAbsolutePath)
+    }, [savePath, useAbsolutePath])
 
-    const handleVerifyToken = async () => {
-        if (!apiToken) return
-        setTokenStatus('verifying')
-        const success = await verifyAndSave(apiToken)
-        setTokenStatus(success ? 'valid' : 'invalid')
-        if (success) {
-            toast({ title: t('settingsPage.api.verified'), variant: 'success' })
-        }
-    }
+    useEffect(() => {
+        setLocalLibraryPath(libraryPath)
+        setIsAbsoluteLibraryPath(useAbsoluteLibraryPath)
+    }, [libraryPath, useAbsoluteLibraryPath])
 
     const handleSavePath = () => {
         setSavePath(localSavePath, isAbsolutePath)
@@ -325,41 +326,39 @@ export default function Settings() {
                         )}
                     >
                         <section.icon className="h-4 w-4" />
-                        {t(section.labelKey)}
+                        {t(section.labelKey, section.defaultLabel)}
                     </button>
                 ))}
 
+                {/* ComfyUI 자체 화면 열기 (모델 관리·노드 확인용) */}
                 <div className="pt-2 mt-2 border-t border-border/50">
-                    <button
-                        onClick={() => openUrl('https://discord.gg/N78K9GPN')}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-muted-foreground hover:bg-[#5865F2]/10 hover:text-[#5865F2]"
-                    >
-                        <MessagesSquare className="h-4 w-4" />
-                        <span className="flex-1 text-left">{t('settingsPage.sections.discord', '디스코드 커뮤니티')}</span>
-                        <ExternalLink className="h-3 w-3 opacity-60" />
-                    </button>
+                    <Tip content={t('settingsPage.openComfyTip', 'ComfyUI 원래 화면을 웹 브라우저로 엽니다 ({{url}})', { url: comfyUrl })} side="right">
+                        <button
+                            onClick={() => {
+                                openUrl(comfyUrl).catch((e) => {
+                                    toast({ title: t('settingsPage.openComfyFailed', 'ComfyUI 화면을 열지 못했습니다'), description: String(e), variant: 'destructive' })
+                                })
+                            }}
+                            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                        >
+                            <span className="h-4 w-4 shrink-0 flex items-center justify-center">
+                                <span className={cn(
+                                    'h-2 w-2 rounded-full',
+                                    comfyStatus === 'online' ? 'bg-emerald-500' : comfyStatus === 'offline' ? 'bg-red-500' : 'bg-amber-500'
+                                )} />
+                            </span>
+                            <span className="flex-1 text-left whitespace-nowrap">{t('settingsPage.openComfy', 'ComfyUI 열기')}</span>
+                            <ExternalLink className="h-3 w-3 opacity-60" />
+                        </button>
+                    </Tip>
                 </div>
             </aside>
 
             {/* Content */}
             <main className="flex-1 p-6 overflow-y-auto">
                 <div className="max-w-2xl space-y-8">
-                    {/* NAIS3 이전 안내 배너 — 항상 표시 */}
-                    <div className="flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3">
-                        <Sparkles className="h-5 w-5 shrink-0 text-amber-400" />
-                        <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium">NAIS3가 나왔습니다</p>
-                            <p className="text-xs text-muted-foreground">
-                                백업 내보내기 → NAIS3 설정에서 불러오면 데이터가 그대로 이전됩니다
-                            </p>
-                        </div>
-                        <Button size="sm" variant="outline" onClick={handleExportBackup} disabled={isExporting}>
-                            백업 내보내기
-                        </Button>
-                        <Button size="sm" onClick={() => openUrl('https://github.com/sunanakgo/NAIS3/releases')}>
-                            NAIS3 받기
-                        </Button>
-                    </div>
+                    {/* ComfyUI Section */}
+                    {activeSection === 'comfy' && <ComfySettingsSection />}
 
                     {/* General Section */}
                     {activeSection === 'general' && (
@@ -395,15 +394,15 @@ export default function Settings() {
                                     </Select>
                                 </div>
 
-                                {/* Streaming Toggle */}
-                                <div className="flex items-center justify-between pt-4 border-t border-border/30">
+                                {/* 실시간 미리보기 */}
+                                <div className="flex items-center justify-between gap-4 pt-4 border-t border-border/30">
                                     <div className="space-y-0.5">
                                         <label className="text-sm font-medium flex items-center gap-2">
-                                            <Zap className="h-4 w-4 text-yellow-500" />
-                                            {t('settingsPage.streaming.title', 'Streaming Generation')}
+                                            <Eye className="h-4 w-4 text-yellow-500" />
+                                            {t('comfy.settings.livePreview', '실시간 미리보기')}
                                         </label>
-                                        <p className="text-xs text-muted-foreground">
-                                            {t('settingsPage.streaming.description', 'Show real-time progress during image generation')}
+                                        <p className="text-xs text-muted-foreground leading-relaxed">
+                                            {t('comfy.settings.livePreviewHelp', '그리는 동안 진행 중인 그림을 미리 보여 줍니다. ComfyUI를 --preview-method auto 를 붙여 켜야 보입니다 (방법은 설정 → ComfyUI 도움말). 꺼도 진행률은 보입니다.')}
                                         </p>
                                     </div>
                                     <Switch
@@ -417,7 +416,7 @@ export default function Settings() {
                                     <div className="flex items-center justify-between">
                                         <label className="text-sm font-medium flex items-center gap-2">
                                             <Timer className="h-4 w-4 text-blue-500" />
-                                            {t('settingsPage.generationDelay.title', 'Generation Delay')}
+                                            {t('comfy.settings.generationDelay', '연속 생성 사이 쉬는 시간')}
                                         </label>
                                         <span className="text-sm text-muted-foreground">{generationDelay}ms</span>
                                     </div>
@@ -430,158 +429,32 @@ export default function Settings() {
                                         className="w-full"
                                     />
                                     <p className="text-xs text-muted-foreground">
-                                        {t('settingsPage.generationDelay.description', 'Delay between batch image generations to avoid API rate limits.')}
+                                        {t('comfy.settings.generationDelayHelp', '여러 장을 연속으로 그릴 때 사이에 쉬는 시간. 로컬 ComfyUI는 보통 0')}
                                     </p>
                                 </div>
 
                                 {/* Version Info */}
-                                <div className="space-y-4 pt-4 border-t border-border/30">
-                                    <div className="flex items-center justify-between">
-                                        <div className="space-y-0.5">
-                                            <label className="text-sm font-medium flex items-center gap-2">
-                                                <Info className="h-4 w-4 text-blue-500" />
-                                                {t('settingsPage.version.title', 'Version')}
-                                            </label>
-                                            <p className="text-xs text-muted-foreground">
-                                                NAIS2 v{appVersion}
-                                            </p>
-                                        </div>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={async () => {
-                                                setIsCheckingUpdate(true)
-                                                try {
-                                                    const update = await check()
-                                                    if (update) {
-                                                        // Store the update object
-                                                        setCurrentUpdateObject(update)
-
-                                                        // Check if already downloaded
-                                                        if (pendingUpdate && pendingUpdate.version === update.version) {
-                                                            toast({
-                                                                title: t('update.readyToInstall', '업데이트 설치 준비됨'),
-                                                                description: t('update.version', { version: update.version }),
-                                                            })
-                                                        } else {
-                                                            toast({
-                                                                title: t('update.available', '업데이트 사용 가능'),
-                                                                description: t('update.version', { version: update.version }),
-                                                                action: (
-                                                                    <Button
-                                                                        size="sm"
-                                                                        onClick={async () => {
-                                                                            setIsDownloading(true)
-                                                                            toast({ title: t('update.downloading', '다운로드 중...'), description: t('update.pleaseWait', '잠시만 기다려주세요') })
-                                                                            try {
-                                                                                let totalBytes = 0
-                                                                                let downloadedBytes = 0
-                                                                                await update.download((event) => {
-                                                                                    if (event.event === 'Started' && event.data.contentLength) {
-                                                                                        totalBytes = event.data.contentLength
-                                                                                    } else if (event.event === 'Progress') {
-                                                                                        downloadedBytes += event.data.chunkLength
-                                                                                        if (totalBytes > 0) {
-                                                                                            setDownloadProgress(Math.round((downloadedBytes / totalBytes) * 100))
-                                                                                        }
-                                                                                    }
-                                                                                })
-                                                                                setPendingUpdate({ version: update.version, downloadedAt: Date.now() })
-                                                                                toast({
-                                                                                    title: t('update.downloadComplete', '다운로드 완료'),
-                                                                                    description: t('update.readyToInstallDesc', '작업을 저장한 후 설치하세요.'),
-                                                                                    action: (
-                                                                                        <Button
-                                                                                            size="sm"
-                                                                                            onClick={async () => {
-                                                                                                await update.install()
-                                                                                                await relaunch()
-                                                                                            }}
-                                                                                        >
-                                                                                            <Sparkles className="h-4 w-4 mr-1" />
-                                                                                            {t('update.installNow', '지금 설치')}
-                                                                                        </Button>
-                                                                                    ),
-                                                                                })
-                                                                            } catch (e) {
-                                                                                toast({ title: t('update.failed', '다운로드 실패'), variant: 'destructive' })
-                                                                            } finally {
-                                                                                setIsDownloading(false)
-                                                                            }
-                                                                        }}
-                                                                        disabled={isDownloading}
-                                                                    >
-                                                                        {isDownloading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                                                                    </Button>
-                                                                ),
-                                                            })
-                                                        }
-                                                    } else {
-                                                        toast({ title: t('update.upToDate', '최신 버전입니다'), variant: 'success' })
-                                                    }
-                                                } catch (e) {
-                                                    toast({ title: t('update.checkFailed', '업데이트 확인 실패'), variant: 'destructive' })
-                                                } finally {
-                                                    setIsCheckingUpdate(false)
-                                                }
-                                            }}
-                                            disabled={isCheckingUpdate}
-                                        >
-                                            {isCheckingUpdate ? (
-                                                <RefreshCw className="h-4 w-4 animate-spin" />
-                                            ) : (
-                                                <>
-                                                    <RefreshCw className="h-4 w-4 mr-2" />
-                                                    {t('settingsPage.version.checkUpdate', 'Check for Updates')}
-                                                </>
-                                            )}
-                                        </Button>
+                                <div className="flex items-center justify-between pt-4 border-t border-border/30">
+                                    <div className="space-y-0.5">
+                                        <label className="text-sm font-medium flex items-center gap-2">
+                                            <Info className="h-4 w-4 text-blue-500" />
+                                            {t('settingsPage.version.title', 'Version')}
+                                        </label>
+                                        <p className="text-xs text-muted-foreground">
+                                            NAIS2 Comfy v{appVersion}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {t('comfy.settings.basedOn', 'NAIS2(NovelAI Image Studio 2)의 화면을 그대로 옮겨 로컬 ComfyUI로 그리게 만든 판입니다.')}
+                                        </p>
                                     </div>
-
-                                    {/* Pending Update Install Section - only show if pending version is newer */}
-                                    {pendingUpdate && appVersion && (() => {
-                                        // Compare versions
-                                        const current = appVersion.replace(/^v/, '').split('.').map(Number)
-                                        const pending = pendingUpdate.version.replace(/^v/, '').split('.').map(Number)
-                                        let isNewer = false
-                                        for (let i = 0; i < Math.max(current.length, pending.length); i++) {
-                                            const c = current[i] || 0
-                                            const p = pending[i] || 0
-                                            if (p > c) { isNewer = true; break }
-                                            if (p < c) break
-                                        }
-                                        if (!isNewer) return null
-                                        return (
-                                            <div className="flex items-center justify-between p-3 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-lg border border-green-500/20">
-                                                <div className="flex items-center gap-2">
-                                                    <Sparkles className="h-4 w-4 text-green-500" />
-                                                    <div>
-                                                        <p className="text-sm font-medium text-green-600 dark:text-green-400">
-                                                            {t('update.readyToInstall', '업데이트 설치 준비됨')}
-                                                        </p>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            v{pendingUpdate.version}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <Button
-                                                    size="sm"
-                                                    onClick={async () => {
-                                                        try {
-                                                            toast({ title: t('update.installing', '설치 중...'), description: t('update.pleaseWait', '잠시만 기다려주세요') })
-                                                            await installPendingUpdate()
-                                                        } catch (e) {
-                                                            console.error('Install failed:', e)
-                                                            toast({ title: t('update.failed', '설치 실패'), description: String(e), variant: 'destructive' })
-                                                        }
-                                                    }}
-                                                >
-                                                    <Sparkles className="h-4 w-4 mr-1" />
-                                                    {t('update.installNow', '지금 설치')}
-                                                </Button>
-                                            </div>
-                                        )
-                                    })()}
+                                    <span className={cn(
+                                        'text-xs px-2 py-0.5 rounded-full shrink-0',
+                                        comfyStatus === 'online' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-muted text-muted-foreground'
+                                    )}>
+                                        {comfyStatus === 'online'
+                                            ? `ComfyUI ${comfyVersion || ''}`.trim()
+                                            : t('comfy.status.offline', 'ComfyUI 꺼짐')}
+                                    </span>
                                 </div>
                             </div>
                         </section>
@@ -647,111 +520,6 @@ export default function Settings() {
                                     />
                                     <p className="text-xs text-muted-foreground">
                                         {t('settingsPage.theme.fontSizeHelp', 'Adjust the font size of the prompt input areas.')}
-                                    </p>
-                                </div>
-                            </div>
-                        </section>
-                    )}
-
-                    {/* API Section */}
-                    {activeSection === 'api' && (
-                        <section className="space-y-6">
-                            <div>
-                                <h3 className="text-xl font-semibold">{t('settingsPage.sections.api')}</h3>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                    {t('settingsPage.api.description')}
-                                </p>
-                            </div>
-
-                            {/* Anlas Balance Card */}
-                            {isVerified && anlas && (
-                                <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-amber-500/10 to-yellow-500/10 rounded-xl border border-amber-500/20">
-                                    <div className="p-3 bg-amber-500/20 rounded-full">
-                                        <Coins className="h-6 w-6 text-amber-500" />
-                                    </div>
-                                    <div>
-                                        <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-                                            {anlas.total.toLocaleString()} Anlas
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {t('settingsPage.api.anlas.fixed')}: {anlas.fixed.toLocaleString()} / {t('settingsPage.api.anlas.purchased')}: {anlas.purchased.toLocaleString()}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="border border-border/50 rounded-xl p-6 space-y-4 bg-card/30">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium flex items-center gap-2">
-                                        <img src={NovelAILogo} alt="NovelAI" className="h-4 w-4" />
-                                        {t('settingsPage.api.token')}
-                                    </label>
-                                    <div className="flex gap-2">
-                                        <div className="relative flex-1">
-                                            <Input
-                                                type="password"
-                                                placeholder={t('settingsPage.api.tokenPlaceholder')}
-                                                value={apiToken}
-                                                onChange={(e) => {
-                                                    setApiToken(e.target.value)
-                                                    setTokenStatus('idle')
-                                                }}
-                                                className={cn(
-                                                    'pr-10',
-                                                    tokenStatus === 'valid' && 'border-green-500 focus-visible:ring-green-500',
-                                                    tokenStatus === 'invalid' && 'border-destructive focus-visible:ring-destructive'
-                                                )}
-                                            />
-                                            {tokenStatus !== 'idle' && tokenStatus !== 'verifying' && (
-                                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                                    {tokenStatus === 'valid' ? (
-                                                        <Check className="h-4 w-4 text-green-500" />
-                                                    ) : (
-                                                        <X className="h-4 w-4 text-destructive" />
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <Button
-                                            onClick={handleVerifyToken}
-                                            disabled={tokenStatus === 'verifying' || isLoading}
-                                        >
-                                            {tokenStatus === 'verifying' || isLoading ? (
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                            ) : (
-                                                t('settingsPage.api.verify')
-                                            )}
-                                        </Button>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">
-                                        {t('settingsPage.api.tokenHelp')}
-                                    </p>
-                                </div>
-
-                                <div className="space-y-2 pt-4 border-t border-border/30">
-                                    <label className="text-sm font-medium flex items-center gap-2">
-                                        <img src={GeminiIcon} alt="Gemini" className="h-4 w-4" />
-                                        {t('settingsPage.api.geminiKey', 'Gemini API Key')}
-                                    </label>
-                                    <div className="flex gap-2">
-                                        <Input
-                                            type="password"
-                                            placeholder={t('settingsPage.api.geminiKeyPlaceholder', 'AIza...')}
-                                            value={localGeminiKey}
-                                            onChange={(e) => setLocalGeminiKey(e.target.value)}
-                                            className="flex-1"
-                                        />
-                                        <Button
-                                            onClick={() => {
-                                                setGeminiApiKey(localGeminiKey)
-                                                toast({ title: t('settingsPage.saved'), variant: 'success' })
-                                            }}
-                                        >
-                                            {t('settingsPage.saveBtn')}
-                                        </Button>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">
-                                        {t('settingsPage.api.geminiKeyHelp', 'Get your API key from Google AI Studio')}
                                     </p>
                                 </div>
                             </div>
@@ -886,29 +654,6 @@ export default function Settings() {
                                 </div>
                             </div>
 
-                            {/* Image Format Setting */}
-                            <div className="border border-border/50 rounded-xl p-6 space-y-4 bg-card/30">
-                                <div className="flex items-center justify-between">
-                                    <div className="space-y-0.5">
-                                        <label className="text-sm font-medium">{t('settingsPage.save.imageFormat.title', 'Image Format')}</label>
-                                        <p className="text-xs text-muted-foreground">
-                                            {t('settingsPage.save.imageFormat.description', 'Choose the format for generated images.')}
-                                        </p>
-                                    </div>
-                                    <Select value={imageFormat} onValueChange={(value: 'png' | 'webp') => setImageFormat(value)}>
-                                        <SelectTrigger className="w-32">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="png">PNG</SelectItem>
-                                            <SelectItem value="webp">WebP</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    {t('settingsPage.save.imageFormat.help', 'WebP offers smaller file sizes with similar quality. PNG provides lossless quality.')}
-                                </p>
-                            </div>
                         </section>
                     )}
 
@@ -1268,7 +1013,7 @@ function ShortcutRow({ action, binding, allBindings, isEditing, recordedBinding,
     return (
         <div className="space-y-2">
             <div className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50">
-                <span className="text-sm">{t(binding.description, binding.description)}</span>
+                <span className="text-sm">{shortcutName(t, action)}</span>
                 <div className="flex items-center gap-2">
                     {isEditing ? (
                         <>
@@ -1311,7 +1056,7 @@ function ShortcutRow({ action, binding, allBindings, isEditing, recordedBinding,
                     <div className="flex items-center gap-2 text-sm text-destructive">
                         <Info className="h-4 w-4" />
                         <span>
-                            {t('settingsPage.shortcuts.conflict', '이미 사용 중:')} {t(allBindings[conflictAction].description, allBindings[conflictAction].description)}
+                            {t('settingsPage.shortcuts.conflict', '이미 사용 중:')} {shortcutName(t, conflictAction)}
                         </span>
                     </div>
                     <div className="flex items-center gap-2">

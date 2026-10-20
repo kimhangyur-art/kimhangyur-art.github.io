@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog'
 import { useGenerationStore } from '@/stores/generation-store'
 import { LoraListEditor } from './LoraListEditor'
+import { useComfyAutoRefresh } from './ParamsShared'
 
 interface LoraDialogProps {
     open: boolean
@@ -23,6 +24,7 @@ export function useEnabledLoraCount(): number {
 
 export function LoraDialog({ open, onOpenChange }: LoraDialogProps) {
     const { t } = useTranslation()
+    useComfyAutoRefresh(open)
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col overflow-hidden">
@@ -32,7 +34,7 @@ export function LoraDialog({ open, onOpenChange }: LoraDialogProps) {
                         {t('comfy.lora.title', 'LoRA')}
                     </DialogTitle>
                     <DialogDescription>
-                        {t('comfy.lora.dialogDesc', '그림체·캐릭터를 더하는 LoRA를 고르고 세기를 정합니다. 바꾼 내용은 바로 저장되고 다음 그림부터 적용됩니다.')}
+                        {t('comfy.lora.dialogDesc', 'LoRA를 고르고 세기를 정합니다. 바꾼 내용은 바로 저장되고 다음 그림부터 적용됩니다.')}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6 pb-1">

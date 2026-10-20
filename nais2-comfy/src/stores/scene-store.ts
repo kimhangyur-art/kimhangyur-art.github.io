@@ -1,15 +1,37 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { indexedDBStorage } from '@/lib/indexed-db'
-import { rename, exists} from '@tauri-apps/plugin-fs'
-import { pictureDir, join } from '@tauri-apps/api/path'
-import { useSettingsStore } from './settings-store'
+import { rename, exists } from '@tauri-apps/plugin-fs'
+import { sceneFolder } from '@/lib/output-save'
 
 export interface SceneImage {
     id: string
-    url: string  // data:image/png;base64,... format
+    url: string  // 파일 경로 (예전 데이터는 data:image/png;base64,... 일 수도 있다)
     timestamp: number
     isFavorite: boolean
+    /** '고화질로 다시 그리기'로 만든 그림 (즐겨찾기 고화질로 버튼이 또 키우지 않게) */
+    upscaled?: boolean
+}
+
+/** 씬 그림 묶음 고화질 작업 진행 상황 (화면을 나갔다 와도 보이게 저장소에 둔다) */
+export interface HqBatchState {
+    presetId: string
+    sceneId: string
+    done: number
+    total: number
+}
+
+/** 겹치지 않는 id (같은 밀리초에 두 장이 들어와도 안전하게) */
+export function newSceneUid(): string {
+    try {
+        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+    } catch { /* 아래로 */ }
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+/** 고화질로 다시 그린 그림인지 (저장소 표시 또는 파일 이름으로) */
+export function isUpscaledSceneImage(img: SceneImage): boolean {
+    return !!img.upscaled || /(?:^|[\\/])NAIS_(?:SCENE_HQ|UPSCALE)_[^\\/]*$/i.test(img.url)
 }
 
 export interface SceneCard {
@@ -63,7 +85,13 @@ interface SceneState {
     getQueuedScenes: (presetId: string) => SceneCard[]
 
     // Actions - Images
-    addImageToScene: (presetId: string, sceneId: string, imageUrl: string) => void
+    /** 그림을 씬 맨 앞(최신)에 넣고 새 그림 id를 돌려준다 */
+    addImageToScene: (presetId: string, sceneId: string, imageUrl: string, opts?: { isFavorite?: boolean; upscaled?: boolean }) => string
+    /**
+     * 고화질로 다시 그린 그림을 넣는다. 새 그림이 즐겨찾기가 되고 원본은 즐겨찾기만 풀린다
+     * (ZIP 내보내기가 즐겨찾기를 고르므로 고화질 그림이 들어간다). 새 그림 id를 돌려준다.
+     */
+    addUpscaledImage: (presetId: string, sceneId: string, sourceImageId: string, imageUrl: string) => string
     toggleFavorite: (presetId: string, sceneId: string, imageId: string) => void
     deleteImage: (presetId: string, sceneId: string, imageId: string) => void
     deleteNonFavoriteImages: (presetId: string, sceneId: string) => { count: number; paths: string[] }
@@ -91,12 +119,19 @@ interface SceneState {
     // Memory cleanup - call when leaving scene mode to release streaming data
     clearRuntimeData: () => void
 
+    // 고화질로 다시 그리기 (씬 상세 화면): 그림 id → 진행률 0~100
+    upscaleProgress: Record<string, number>
+    setUpscaleProgress: (imageId: string, progress: number | null) => void
+    hqBatch: HqBatchState | null
+    setHqBatch: (batch: HqBatchState | null) => void
+
     // History Refresh Trigger
     historyRefreshTrigger: number
     triggerHistoryRefresh: () => void
 
     // File Management
-    importPreset: (preset: ScenePreset) => void
+    /** 씬 JSON(NAIS2 형식 외 3가지)을 새 프리셋으로 불러온다. 씬이 하나도 없거나 형식을 모르면 false */
+    importPreset: (json: unknown) => boolean
     validateSceneImages: (presetId: string, sceneId: string, validImageIds: string[]) => void
 
     // Multi-Select / Edit Mode
@@ -128,6 +163,137 @@ interface SceneState {
     // Scroll Position (for returning from detail page)
     scrollPosition: number
     setScrollPosition: (position: number) => void
+}
+
+// ---------------------------------------------------------------------------
+// 씬 JSON 불러오기 (원래 NAIS2가 읽던 네 가지 형식 그대로)
+//   A. 배열 [{ scene_name, scene_prompt }]                 (scene_preset_export.json)
+//   B. { name, scenes: { 키: { name, slots: [[{ prompt, enabled }]] } } }  (상호작용공유용.json)
+//   C. { name, presets: { SDImageGenEasy: [{ name, frontPrompt, backPrompt }] } }
+//   D. NAIS2 씬 프리셋 { name, scenes: [SceneCard] }
+// 씬·그림 id는 언제나 새로 만든다 (같은 파일을 두 번 불러와도 겹치지 않게).
+
+type JsonObject = Record<string, unknown>
+
+function isJsonObject(v: unknown): v is JsonObject {
+    return typeof v === 'object' && v !== null && !Array.isArray(v)
+}
+
+function jsonString(v: unknown, fallback = ''): string {
+    return typeof v === 'string' ? v : fallback
+}
+
+function positiveNumber(v: unknown): number | undefined {
+    return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : undefined
+}
+
+function importedScene(name: string, scenePrompt: string, extra: Partial<SceneCard> = {}): SceneCard {
+    return {
+        id: newSceneUid(),
+        name,
+        scenePrompt,
+        queueCount: 0,
+        images: [],
+        createdAt: Date.now(),
+        ...extra,
+    }
+}
+
+/** B 형식: 칸(slot)마다 켜진 항목을 하나씩 골라 만든 모든 조합 */
+function slotCombinations(slots: unknown[]): string[] {
+    if (slots.length === 0) return ['']
+    const firstSlot = Array.isArray(slots[0]) ? slots[0] : []
+    // enabled 필드가 없으면 기본적으로 활성화된 것으로 간주
+    const enabledItems = firstSlot.filter((item): item is JsonObject => isJsonObject(item) && item.enabled !== false)
+    const remainingPrompts = slotCombinations(slots.slice(1))
+
+    if (enabledItems.length === 0) return remainingPrompts
+
+    const results: string[] = []
+    for (const item of enabledItems) {
+        for (const nextPrompt of remainingPrompts) {
+            const current = jsonString(item.prompt)
+            results.push(nextPrompt ? `${current}, ${nextPrompt}` : current)
+        }
+    }
+    return results
+}
+
+function importedImages(v: unknown): SceneImage[] {
+    if (!Array.isArray(v)) return []
+    const out: SceneImage[] = []
+    for (const img of v) {
+        if (!isJsonObject(img) || typeof img.url !== 'string' || !img.url) continue
+        out.push({
+            id: newSceneUid(),
+            url: img.url,
+            timestamp: typeof img.timestamp === 'number' ? img.timestamp : Date.now(),
+            isFavorite: img.isFavorite === true,
+            ...(img.upscaled === true ? { upscaled: true } : {}),
+        })
+    }
+    return out
+}
+
+export function parseScenePresetJson(jsonContent: unknown): { name: string; scenes: SceneCard[] } | null {
+    // Case A: Legacy Array Format (scene_preset_export.json)
+    if (Array.isArray(jsonContent)) {
+        return {
+            name: `Legacy Import ${new Date().toLocaleDateString()}`,
+            scenes: jsonContent.map((item) => {
+                const o = isJsonObject(item) ? item : {}
+                return importedScene(jsonString(o.scene_name, 'Untitled Scene') || 'Untitled Scene', jsonString(o.scene_prompt))
+            }),
+        }
+    }
+    if (!isJsonObject(jsonContent)) return null
+
+    // Case B: Interaction Share Format (상호작용공유용.json)
+    if (isJsonObject(jsonContent.scenes)) {
+        const scenes: SceneCard[] = []
+        for (const sceneData of Object.values(jsonContent.scenes)) {
+            if (!isJsonObject(sceneData) || !Array.isArray(sceneData.slots)) continue
+            const combinations = slotCombinations(sceneData.slots)
+            combinations.forEach((fullPrompt, index) => {
+                // If there are multiple variations, append index to name
+                const suffix = combinations.length > 1 ? `_${index + 1}` : ''
+                scenes.push(importedScene((jsonString(sceneData.name) || 'Untitled') + suffix, fullPrompt))
+            })
+        }
+        return { name: jsonString(jsonContent.name) || 'Interaction Share', scenes }
+    }
+
+    // Case C: SDImageGenEasy Presets
+    const presets = jsonContent.presets
+    if (isJsonObject(presets) && presets.SDImageGenEasy) {
+        const list = Array.isArray(presets.SDImageGenEasy) ? presets.SDImageGenEasy : []
+        return {
+            name: jsonString(jsonContent.name) || 'Interaction Share (Presets)',
+            scenes: list.map((item) => {
+                const o = isJsonObject(item) ? item : {}
+                const promptParts = [jsonString(o.frontPrompt), jsonString(o.backPrompt)].filter(Boolean)
+                return importedScene(jsonString(o.name) || 'Untitled', promptParts.join(', '))
+            }),
+        }
+    }
+
+    // Case D: Standard ScenePreset Format (NAIS2)
+    if (Array.isArray(jsonContent.scenes)) {
+        return {
+            name: jsonString(jsonContent.name) || 'Use Preset',
+            scenes: jsonContent.scenes.filter(isJsonObject).map((sc) => {
+                const width = positiveNumber(sc.width)
+                const height = positiveNumber(sc.height)
+                return importedScene(jsonString(sc.name) || 'Untitled Scene', jsonString(sc.scenePrompt), {
+                    images: importedImages(sc.images),
+                    createdAt: typeof sc.createdAt === 'number' ? sc.createdAt : Date.now(),
+                    ...(width && height ? { width, height } : {}),
+                })
+            }),
+        }
+    }
+
+    return null
 }
 
 const DEFAULT_PRESET_ID = 'scene-default'
@@ -197,7 +363,7 @@ export const useSceneStore = create<SceneState>()(
                     presets: state.presets.map(p => {
                         if (p.id !== presetId) return p
                         const newScene: SceneCard = {
-                            id: Date.now().toString(),
+                            id: newSceneUid(),
                             name: name || `씬 ${p.scenes.length + 1}`,
                             scenePrompt: '',
                             queueCount: 0,
@@ -227,7 +393,7 @@ export const useSceneStore = create<SceneState>()(
                         if (!scene) return p
                         const duplicated: SceneCard = {
                             ...scene,
-                            id: Date.now().toString(),
+                            id: newSceneUid(),
                             name: `${scene.name} (복사본)`,
                             queueCount: 0,
                             images: [],
@@ -245,49 +411,27 @@ export const useSceneStore = create<SceneState>()(
                 const state = get()
                 const preset = state.presets.find(p => p.id === presetId)
                 const scene = preset?.scenes.find(s => s.id === sceneId)
-                
+
                 if (!scene || scene.name === name) return
-                
-                const oldName = scene.name
-                const safeOldName = oldName.replace(/[<>:"/\\|?*]/g, '_').trim() || 'Untitled_Scene'
-                const safeNewName = name.replace(/[<>:"/\\|?*]/g, '_').trim() || 'Untitled_Scene'
-                const safePresetName = (preset?.name || 'Default').replace(/[<>:"/\\|?*]/g, '_').trim()
-                
-                // Try to rename the folder
+
+                // 그림 폴더 이름도 같이 바꾼다 (저장할 때와 같은 규칙: lib/output-save 의 sceneFolder)
                 try {
-                    const { savePath, useAbsolutePath } = useSettingsStore.getState()
-                    let oldFolderPath: string
-                    let newFolderPath: string
-                    
-                    if (useAbsolutePath && savePath) {
-                        oldFolderPath = await join(savePath, 'NAIS_Scene', safePresetName, safeOldName)
-                        newFolderPath = await join(savePath, 'NAIS_Scene', safePresetName, safeNewName)
-                    } else {
-                        const baseDir = await pictureDir()
-                        oldFolderPath = await join(baseDir, 'NAIS_Scene', safePresetName, safeOldName)
-                        newFolderPath = await join(baseDir, 'NAIS_Scene', safePresetName, safeNewName)
-                    }
-                    
-                    // Only rename if old folder exists and new folder doesn't
-                    if (await exists(oldFolderPath) && !(await exists(newFolderPath))) {
+                    const oldFolderPath = await sceneFolder(preset?.name, scene.name)
+                    const newFolderPath = await sceneFolder(preset?.name, name)
+
+                    // 옛 폴더가 있고 새 폴더가 없을 때만 옮긴다
+                    if (oldFolderPath !== newFolderPath && await exists(oldFolderPath) && !(await exists(newFolderPath))) {
                         await rename(oldFolderPath, newFolderPath)
-                        
-                        // Update image paths in scene
+                        const moved = (url: string) => url.startsWith(oldFolderPath) ? newFolderPath + url.slice(oldFolderPath.length) : url
+
                         set(state => ({
                             presets: state.presets.map(p =>
                                 p.id === presetId
                                     ? {
                                         ...p,
                                         scenes: p.scenes.map(s =>
-                                            s.id === sceneId 
-                                                ? { 
-                                                    ...s, 
-                                                    name,
-                                                    images: s.images.map(img => ({
-                                                        ...img,
-                                                        url: img.url.replace(oldFolderPath, newFolderPath)
-                                                    }))
-                                                } 
+                                            s.id === sceneId
+                                                ? { ...s, name, images: s.images.map(img => ({ ...img, url: moved(img.url) })) }
                                                 : s
                                         ),
                                     }
@@ -299,8 +443,8 @@ export const useSceneStore = create<SceneState>()(
                 } catch (e) {
                     console.warn('Failed to rename scene folder:', e)
                 }
-                
-                // Fallback: just update the name without folder rename
+
+                // 폴더를 못 옮기면 이름만 바꾼다 (그림은 원래 자리에 그대로 있다)
                 set(state => ({
                     presets: state.presets.map(p =>
                         p.id === presetId
@@ -435,17 +579,19 @@ export const useSceneStore = create<SceneState>()(
             },
 
             // Image Actions
-            addImageToScene: (presetId, sceneId, imageUrl) => {
+            addImageToScene: (presetId, sceneId, imageUrl, opts) => {
+                const now = Date.now()
                 const newImage: SceneImage = {
-                    id: Date.now().toString(),
+                    id: newSceneUid(),
                     url: imageUrl,
-                    timestamp: Date.now(),
-                    isFavorite: false,
+                    timestamp: now,
+                    isFavorite: !!opts?.isFavorite,
+                    ...(opts?.upscaled ? { upscaled: true } : {}),
                 }
-                
+
                 // MEMORY OPTIMIZATION: Increased limit for heavy users (was 100)
                 const MAX_IMAGES_PER_SCENE = 2000
-                
+
                 set(state => ({
                     presets: state.presets.map(p =>
                         p.id === presetId
@@ -453,37 +599,52 @@ export const useSceneStore = create<SceneState>()(
                                 ...p,
                                 scenes: p.scenes.map(s => {
                                     if (s.id !== sceneId) return s
-                                    
+
                                     // Add new image at the beginning (newest first)
                                     let updatedImages = [newImage, ...s.images]
-                                    
+
                                     // If over limit, remove oldest non-favorites
                                     if (updatedImages.length > MAX_IMAGES_PER_SCENE) {
-                                        // Sort by timestamp descending to keep newest
-                                        // Favorites are preserved separately
                                         const favorites = updatedImages.filter(img => img.isFavorite)
                                         const nonFavorites = updatedImages
                                             .filter(img => !img.isFavorite)
                                             .sort((a, b) => b.timestamp - a.timestamp)
-                                        
+
                                         // Keep all favorites + newest non-favorites up to limit
                                         const keepCount = Math.max(0, MAX_IMAGES_PER_SCENE - favorites.length)
-                                        // Merge back and sort by timestamp to maintain display order
                                         updatedImages = [...favorites, ...nonFavorites.slice(0, keepCount)]
                                             .sort((a, b) => b.timestamp - a.timestamp)
-                                        
+
                                         console.warn(`[SceneStore] Scene ${s.name}: Trimmed to ${updatedImages.length} images (limit: ${MAX_IMAGES_PER_SCENE})`)
                                     }
-                                    
+
                                     return { ...s, images: updatedImages }
                                 }),
                             }
                             : p
                     ),
                 }))
-                // NOTE: Removed triggerHistoryRefresh() here.
-                // HistoryPanel now uses instant event-based updates (newImageGenerated),
-                // so triggering a full directory rescan per image is no longer needed.
+                // HistoryPanel 은 'newImageGenerated' 이벤트로 바로 갱신된다 (lib/output-save)
+                return newImage.id
+            },
+
+            addUpscaledImage: (presetId, sceneId, sourceImageId, imageUrl) => {
+                const id = get().addImageToScene(presetId, sceneId, imageUrl, { isFavorite: true, upscaled: true })
+                set(state => ({
+                    presets: state.presets.map(p =>
+                        p.id === presetId
+                            ? {
+                                ...p,
+                                scenes: p.scenes.map(s =>
+                                    s.id === sceneId
+                                        ? { ...s, images: s.images.map(img => img.id === sourceImageId ? { ...img, isFavorite: false } : img) }
+                                        : s
+                                ),
+                            }
+                            : p
+                    ),
+                }))
+                return id
             },
 
             toggleFavorite: (presetId, sceneId, imageId) => {
@@ -644,8 +805,12 @@ export const useSceneStore = create<SceneState>()(
                 }
             },
             cancelSceneGeneration: () => {
-                // Request cancel but keep isGenerating=true until API completes
-                // This prevents 429 errors from rapid cancel/restart
+                // 취소 요청: hooks/useSceneGeneration 이 isCancelling 을 보고 ComfyUI 작업을 바로 멈춘다.
+                // 멈출 때까지 버튼은 '취소 중'으로 잠근다.
+                if (!get().isGenerating) {
+                    set({ isCancelling: false })
+                    return
+                }
                 set({ isCancelling: true, generationSessionId: Date.now() })
             },
             generationSessionId: 0,
@@ -688,133 +853,44 @@ export const useSceneStore = create<SceneState>()(
                 })
             },
 
+            upscaleProgress: {},
+            setUpscaleProgress: (imageId, progress) => set(state => {
+                const next = { ...state.upscaleProgress }
+                if (progress === null) delete next[imageId]
+                else next[imageId] = progress
+                return { upscaleProgress: next }
+            }),
+            hqBatch: null,
+            setHqBatch: (hqBatch) => set({ hqBatch }),
+
             // History Refresh Trigger
             historyRefreshTrigger: 0,
             triggerHistoryRefresh: () => set(state => ({ historyRefreshTrigger: state.historyRefreshTrigger + 1 })),
 
             // File Management Actions
-            importPreset: (jsonContent: any) => {
+            importPreset: (jsonContent) => {
+                const parsed = parseScenePresetJson(jsonContent)
+                if (!parsed) {
+                    console.error('Unknown preset format', jsonContent)
+                    return false
+                }
+                if (parsed.scenes.length === 0) {
+                    console.warn('No scenes found in import')
+                    return false
+                }
                 set(state => {
-                    let newName = "Imported Preset"
-                    let newScenes: SceneCard[] = []
-
-                    // 1. Detect Format
-
-                    // Case A: Legacy Array Format (scene_preset_export.json)
-                    if (Array.isArray(jsonContent)) {
-                        newName = `Legacy Import ${new Date().toLocaleDateString()}`
-                        newScenes = jsonContent.map((item: any) => ({
-                            id: crypto.randomUUID(),
-                            name: item.scene_name || "Untitled Scene",
-                            scenePrompt: item.scene_prompt || "",
-                            queueCount: 0,
-                            images: [], // Legacy images not imported automatically
-                            createdAt: Date.now()
-                        }))
-                    }
-                    // Case B: Interaction Share Format (상호작용공유용.json) - New Logic
-                    else if (jsonContent.scenes && !Array.isArray(jsonContent.scenes) && typeof jsonContent.scenes === 'object') {
-                        newName = jsonContent.name || "Interaction Share"
-                        const sceneMap = jsonContent.scenes
-
-                        // Helper to generate prompt combinations
-                        const generatePrompts = (slots: any[][]): string[] => {
-                            if (slots.length === 0) return [""]
-
-                            const firstSlot = slots[0] || []
-                            // enabled 필드가 없으면 기본적으로 활성화된 것으로 간주
-                            const enabledItems = firstSlot.filter((item: any) => item.enabled !== false)
-                            const remainingPrompts = generatePrompts(slots.slice(1))
-
-                            if (enabledItems.length === 0) return remainingPrompts
-
-                            const results: string[] = []
-                            for (const item of enabledItems) {
-                                for (const nextPrompt of remainingPrompts) {
-                                    const current = item.prompt || ""
-                                    // simple join
-                                    const combined = nextPrompt ? `${current}, ${nextPrompt}` : current
-                                    results.push(combined)
-                                }
-                            }
-                            return results
-                        }
-
-                        Object.values(sceneMap).forEach((sceneData: any) => {
-                            if (sceneData.slots && Array.isArray(sceneData.slots)) {
-                                const combinations = generatePrompts(sceneData.slots)
-                                combinations.forEach((fullPrompt, index) => {
-                                    // If there are multiple variations, append index to name
-                                    const suffix = combinations.length > 1 ? `_${index + 1}` : ""
-
-                                    newScenes.push({
-                                        id: crypto.randomUUID(),
-                                        name: (sceneData.name || "Untitled") + suffix,
-                                        scenePrompt: fullPrompt,
-                                        queueCount: 0,
-                                        images: [],
-                                        createdAt: Date.now()
-                                    })
-                                })
-                            }
-                        })
-                    }
-                    // Case C: SDImageGenEasy Presets (Fallback if 'scenes' object missing but has presets)
-                    else if (jsonContent.presets && jsonContent.presets.SDImageGenEasy) {
-                        // ... (Existing logic for SDImageGenEasy if needed, or remove if B covers it)
-                        // Keeping it as fallback for files that might only have presets
-                        newName = jsonContent.name || "Interaction Share (Presets)"
-                        const presets = jsonContent.presets.SDImageGenEasy
-                        if (Array.isArray(presets)) {
-                            newScenes = presets.map((item: any) => {
-                                const promptParts = []
-                                if (item.frontPrompt) promptParts.push(item.frontPrompt)
-                                if (item.backPrompt) promptParts.push(item.backPrompt)
-                                return {
-                                    id: crypto.randomUUID(),
-                                    name: item.name || "Untitled",
-                                    scenePrompt: promptParts.join(", "),
-                                    queueCount: 0,
-                                    images: [],
-                                    createdAt: Date.now()
-                                }
-                            })
-                        }
-                    }
-                    // Case D: Standard ScenePreset Format (NAIS2)
-                    else if (jsonContent.scenes && Array.isArray(jsonContent.scenes)) {
-                        newName = jsonContent.name || "Use Preset"
-                        newScenes = jsonContent.scenes.map((s: any) => ({
-                            ...s,
-                            id: s.id || crypto.randomUUID(), // Ensure ID exists
-                            images: s.images || []
-                        }))
-                        // If importing a full preset object, try to preserve its ID if unique, otherwise gen new
-                        if (jsonContent.id && !state.presets.some(p => p.id === jsonContent.id)) {
-                            // ID is unique, use it? No, safer to always generate new ID for imported stuff to avoid conflicts later
-                        }
-                    } else {
-                        console.error("Unknown preset format", jsonContent)
-                        return state // No change
-                    }
-
-                    if (newScenes.length === 0) {
-                        console.warn("No scenes found in import")
-                        return state
-                    }
-
-                    // Create the new preset
+                    // 같은 파일을 두 번 불러와도 id가 겹치지 않게 프리셋 id도 새로 만든다
                     const newPreset: ScenePreset = {
-                        id: Date.now().toString(), // Generate new ID
-                        name: newName,
-                        scenes: newScenes,
-                        createdAt: Date.now()
+                        id: newSceneUid(),
+                        name: parsed.name,
+                        scenes: parsed.scenes,
+                        createdAt: Date.now(),
                     }
 
                     // Check for name collision
                     let nameSuffix = 1
                     while (state.presets.some(p => p.name === newPreset.name)) {
-                        newPreset.name = `${newName} (${nameSuffix++})`
+                        newPreset.name = `${parsed.name} (${nameSuffix++})`
                     }
 
                     return {
@@ -822,10 +898,7 @@ export const useSceneStore = create<SceneState>()(
                         activePresetId: newPreset.id // Switch to imported preset
                     }
                 })
-            },
-
-            exportPreset: () => {
-                // Implementation moved to UI component (SceneMode.tsx) for file saving
+                return true
             },
 
             validateSceneImages: (presetId, sceneId, validImageIds) => {

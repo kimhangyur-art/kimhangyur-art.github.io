@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, memo } from 'react'
+import { useState, useEffect, useRef, memo, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import {
     DndContext,
     pointerWithin,
@@ -21,6 +22,7 @@ import {
     useSortable,
     rectSortingStrategy,
 } from '@dnd-kit/sortable'
+import type { DraggableAttributes, DraggableSyntheticListeners } from '@dnd-kit/core'
 import { snapCenterToCursor, restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
 import { verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -73,19 +75,21 @@ import {
     ImageOff,
     GripVertical,
     ArrowUpDown,
-    Store,
+    FolderOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tip } from '@/components/ui/tooltip'
-import { useSceneStore } from '@/stores/scene-store'
+import { useSceneStore, type SceneCard, type ScenePreset } from '@/stores/scene-store'
 import { useGenerationStore } from '@/stores/generation-store'
 import { toast } from '@/components/ui/use-toast'
 import { convertFileSrc } from '@tauri-apps/api/core'
-import { writeFile } from '@tauri-apps/plugin-fs'
+import { writeFile, exists, remove } from '@tauri-apps/plugin-fs'
 import { save } from '@tauri-apps/plugin-dialog'
+import { dirname } from '@tauri-apps/api/path'
+import { Command } from '@tauri-apps/plugin-shell'
 import { ExportDialog } from '@/components/scene/ExportDialog'
-import { UploadPresetDialog } from '@/components/marketplace/UploadPresetDialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { sceneFolder } from '@/lib/output-save'
 import {
     Dialog,
     DialogContent,
@@ -106,7 +110,18 @@ const dropAnimation = {
 }
 
 // --- Scene Preset Reorder Dialog ---
-function SortablePresetRow({ preset, isActive, listeners, attributes, setNodeRef, style, isDragging, t }: any) {
+interface SortablePresetRowProps {
+    preset: ScenePreset
+    isActive: boolean
+    listeners: DraggableSyntheticListeners
+    attributes: DraggableAttributes
+    setNodeRef: (node: HTMLElement | null) => void
+    style: CSSProperties
+    isDragging: boolean
+    t: TFunction
+}
+
+function SortablePresetRow({ preset, isActive, listeners, attributes, setNodeRef, style, isDragging, t }: SortablePresetRowProps) {
     return (
         <div
             ref={setNodeRef}
@@ -137,14 +152,14 @@ function SortablePresetRow({ preset, isActive, listeners, attributes, setNodeRef
     )
 }
 
-function SortablePresetWrapper({ preset, isActive, t }: any) {
+function SortablePresetWrapper({ preset, isActive, t }: { preset: ScenePreset; isActive: boolean; t: TFunction }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: preset.id })
     const style = { transform: CSS.Transform.toString(transform), transition }
     return <SortablePresetRow preset={preset} isActive={isActive} listeners={listeners} attributes={attributes} setNodeRef={setNodeRef} style={style} isDragging={isDragging} t={t} />
 }
 
 function ScenePresetReorderDialog({ presets, activePresetId, onReorder, t }: {
-    presets: any[], activePresetId: string | null, onReorder: (oldIndex: number, newIndex: number) => void, t: any
+    presets: ScenePreset[], activePresetId: string | null, onReorder: (oldIndex: number, newIndex: number) => void, t: TFunction
 }) {
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -189,8 +204,6 @@ function ScenePresetReorderDialog({ presets, activePresetId, onReorder, t }: {
 
 export default function SceneMode() {
     const { t } = useTranslation()
-    // const { token } = useAuthStore()
-    // const { savePath } = useSettingsStore()
 
     // Granular selectors to prevent re-renders on unrelated store changes (like streaming progress)
     const presets = useSceneStore(s => s.presets)
@@ -315,26 +328,39 @@ export default function SceneMode() {
         const files = e.target.files
         if (!files || files.length === 0) return
 
+        await importJsonFiles(Array.from(files))
+
+        // Reset input value to allow re-selecting same file
+        e.target.value = ''
+    }
+
+    // JSON 파일들을 불러온다. 원래 NAIS2가 읽던 네 가지 형식을 그대로 읽는다 (stores/scene-store 의 parseScenePresetJson):
+    // 배열 형식(scene_preset_export.json), 상호작용공유 형식, SDImageGenEasy 프리셋, NAIS2 씬 프리셋
+    const importJsonFiles = async (files: File[]) => {
         let importedCount = 0
-        for (const file of Array.from(files)) {
-            if (file.name.toLowerCase().endsWith('.json')) {
-                try {
-                    const text = await file.text()
-                    const json = JSON.parse(text)
-                    importPreset(json)
-                    importedCount++
-                } catch (err) {
-                    console.error("Failed to parse preset JSON", err)
-                }
+        const failedNames: string[] = []
+        for (const file of files) {
+            if (!file.name.toLowerCase().endsWith('.json')) continue
+            try {
+                const json: unknown = JSON.parse(await file.text())
+                if (importPreset(json)) importedCount++
+                else failedNames.push(file.name)
+            } catch (err) {
+                console.error("Failed to parse preset JSON", err)
+                failedNames.push(file.name)
             }
         }
 
         if (importedCount > 0) {
             toast({ description: t('scene.imported', { count: importedCount }) })
         }
-
-        // Reset input value to allow re-selecting same file
-        e.target.value = ''
+        if (failedNames.length > 0) {
+            toast({
+                title: t('comfy.scene.importFailed', '씬 파일을 읽지 못했습니다'),
+                description: t('comfy.scene.importFailedDesc', '{{names}}: 씬이 없거나 모르는 형식입니다. NAIS2에서 내보낸 씬 JSON인지 확인하세요.', { names: failedNames.join(', ') }),
+                variant: 'destructive',
+            })
+        }
     }
 
     // --- Import Logic (DnD) ---
@@ -369,31 +395,7 @@ export default function SceneMode() {
 
         const files = Array.from(e.dataTransfer.files)
         if (files.length === 0) return
-
-        let importedCount = 0
-        for (const file of files) {
-            // Check file extension .json
-            if (file.name.toLowerCase().endsWith('.json')) {
-                try {
-                    const text = await file.text()
-                    const json = JSON.parse(text)
-
-                    // importPreset handles all formats:
-                    // - Case A: Array format (scene_preset_export.json)
-                    // - Case B: Scenes object format (NAI 에셋봇)
-                    // - Case C: SDImageGenEasy presets
-                    // - Case D: Standard NAIS2 ScenePreset format
-                    importPreset(json)
-                    importedCount++
-                } catch (err) {
-                    console.error("Failed to parse preset JSON", err)
-                }
-            }
-        }
-
-        if (importedCount > 0) {
-            toast({ description: t('scene.imported', { count: importedCount }) })
-        }
+        await importJsonFiles(files)
     }
 
     const handleToggleGrid = () => {
@@ -406,7 +408,6 @@ export default function SceneMode() {
 
     const [showExportDialog, setShowExportDialog] = useState(false)
     const [exportScenesFilter, setExportScenesFilter] = useState<'all' | 'selected'>('all')
-    const [showUploadDialog, setShowUploadDialog] = useState(false)
     const [showDeletePresetDialog, setShowDeletePresetDialog] = useState(false)
 
     // Scenes to export based on filter
@@ -450,7 +451,26 @@ export default function SceneMode() {
             }
         } catch (e) {
             console.error('Export JSON failed', e)
-            toast({ title: t('common.error'), variant: 'destructive' })
+            toast({ title: t('common.error', '오류'), variant: 'destructive' })
+        }
+    }
+
+    // 마켓 공유 버튼 자리: 이 프리셋의 그림 폴더(NAIS_Scene/<프리셋>) 열기
+    const handleOpenPresetFolder = async () => {
+        if (!activePreset) return
+        try {
+            const presetPath = await dirname(await sceneFolder(activePreset.name, 'x'))
+            const naisPath = await dirname(presetPath)
+            for (const p of [presetPath, naisPath]) {
+                if (await exists(p)) {
+                    await Command.create('explorer', [p]).execute()
+                    return
+                }
+            }
+            toast({ description: t('comfy.scene.noPresetFolderYet', '아직 이 프리셋으로 저장한 그림이 없어서 열 폴더가 없습니다.') })
+        } catch (e) {
+            console.error('Failed to open preset folder', e)
+            toast({ title: t('comfy.scene.openFolderFailed', '폴더를 열지 못했습니다'), description: String(e), variant: 'destructive' })
         }
     }
 
@@ -586,7 +606,6 @@ export default function SceneMode() {
                                         allPaths.push(...paths)
                                     }
                                     // Delete actual files
-                                    const { remove } = await import('@tauri-apps/plugin-fs')
                                     for (const filePath of allPaths) {
                                         try { await remove(filePath) } catch (e) { console.warn('Delete failed:', e) }
                                     }
@@ -654,9 +673,9 @@ export default function SceneMode() {
                                 <Copy className="h-4 w-4" />
                             </Button>
                         </Tip>
-                        <Tip content={t('scene.shareToMarket', '마켓에 공유')}>
-                            <Button variant="outline" size="icon" className="rounded-xl h-10 w-10 border-white/10 hover:bg-white/5" onClick={() => setShowUploadDialog(true)} disabled={!activePreset || scenes.length === 0 || isGenerating}>
-                                <Store className="h-4 w-4" />
+                        <Tip content={t('comfy.scene.openPresetFolder', '이 프리셋으로 그린 그림 폴더 열기 (NAIS_Scene/프리셋 이름)')}>
+                            <Button variant="outline" size="icon" className="rounded-xl h-10 w-10 border-white/10 hover:bg-white/5" onClick={handleOpenPresetFolder} disabled={!activePreset}>
+                                <FolderOpen className="h-4 w-4" />
                             </Button>
                         </Tip>
                         <Tip content={t('scene.exportZip', '모든 씬 이미지 ZIP 내보내기')}>
@@ -854,12 +873,6 @@ export default function SceneMode() {
                 )
             }
 
-            <UploadPresetDialog
-                open={showUploadDialog}
-                onOpenChange={setShowUploadDialog}
-                preset={activePreset ?? null}
-            />
-
             <ConfirmDialog
                 open={showDeletePresetDialog}
                 onOpenChange={setShowDeletePresetDialog}
@@ -874,8 +887,18 @@ export default function SceneMode() {
     )
 }
 
+interface SceneCardItemProps {
+    scene: SceneCard
+    onClick?: () => void
+    disabled?: boolean
+    isOverlay?: boolean
+    style?: CSSProperties
+    dragAttributes?: DraggableAttributes
+    dragListeners?: DraggableSyntheticListeners
+}
+
 // Memoized SceneCard to prevent unnecessary re-renders
-const SceneCardItem = memo(function SceneCardItem({ scene, onClick, disabled = false, isOverlay = false, style, dragAttributes, dragListeners }: any) {
+const SceneCardItem = memo(function SceneCardItem({ scene, onClick, disabled = false, isOverlay = false, style, dragAttributes, dragListeners }: SceneCardItemProps) {
     const { t } = useTranslation()
     const navigate = useNavigate()
     const [isEditing, setIsEditing] = useState(false)
@@ -971,10 +994,11 @@ const SceneCardItem = memo(function SceneCardItem({ scene, onClick, disabled = f
                         "bg-card border border-border/50 shadow-sm",
                         !isOverlay && "hover:shadow-lg hover:border-primary/30 transition-shadow",
                         isOverlay && "shadow-xl ring-2 ring-primary cursor-grabbing z-50",
-                        disabled && "opacity-80 pointer-events-none",
+                        // 생성 중에도 씬을 눌러 지금까지 나온 그림을 볼 수 있다 (끌기·이름 바꾸기·삭제만 막는다)
+                        disabled && "opacity-80",
                         isEditMode && isSelected && "ring-2 ring-orange-500"
                     )}
-                    onClick={(e) => { if (!isOverlay && !isEditing && !disabled) handleSceneClick(e) }}
+                    onClick={(e) => { if (!isOverlay && !isEditing && !(disabled && isEditMode)) handleSceneClick(e) }}
                     {...(!isEditing && !isEditMode ? dragAttributes : {})}
                     {...(!isEditing && !isEditMode ? dragListeners : {})}
                 >
@@ -1103,15 +1127,18 @@ const PresetRenameInput = memo(({
 })
 
 // Memoized SortableSceneCard with custom comparator to prevent re-renders during drag
-const SortableSceneCard = memo(function SortableSceneCard(props: any) {
+const SortableSceneCard = memo(function SortableSceneCard(props: { scene: SceneCard; disabled?: boolean }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.scene.id, disabled: props.disabled })
     const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.0 : 1 }
     return <div ref={setNodeRef} style={style}> <SceneCardItem {...props} dragAttributes={attributes} dragListeners={listeners} /> </div>
 }, (prevProps, nextProps) => {
-    // Only re-render if scene id, queueCount, name, or disabled changes
+    // Only re-render if scene id, queueCount, name, thumbnail or disabled changes
+    // (썸네일: 즐겨찾기를 바꾸거나 고화질 그림이 즐겨찾기를 이어받으면 바뀐다)
+    const thumb = useSceneStore.getState().getSceneThumbnail
     return prevProps.scene.id === nextProps.scene.id &&
         prevProps.scene.queueCount === nextProps.scene.queueCount &&
         prevProps.scene.name === nextProps.scene.name &&
         prevProps.scene.images?.length === nextProps.scene.images?.length &&
+        thumb(prevProps.scene) === thumb(nextProps.scene) &&
         prevProps.disabled === nextProps.disabled
 })

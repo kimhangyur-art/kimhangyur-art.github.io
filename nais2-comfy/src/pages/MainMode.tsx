@@ -60,12 +60,15 @@ export default function MainMode() {
         return { bytes: new Uint8Array(await res.arrayBuffer()) }
     }
 
-    /** 결과를 미리보기에 띄운다. 그 사이 메인 생성이 시작됐으면 생성 화면을 덮지 않는다 */
-    const showResult = (imageData: string) => {
-        if (!useGenerationStore.getState().isGenerating) {
-            setPreviewImage(`data:image/png;base64,${imageData}`)
-            setPreviewSeed(null)
-        }
+    /**
+     * 결과를 미리보기에 띄운다. 그 사이 메인 생성이 시작됐으면 생성 화면을 덮지 않는다.
+     * seed 를 주면 (다시 생성) 아래 정보 줄에 그 시드를 보여 주고, 누르면 다음 생성에 쓸 수 있다.
+     */
+    const showResult = (imageData: string, newSeed?: number) => {
+        const g = useGenerationStore.getState()
+        if (g.isGenerating) return
+        setPreviewImage(`data:image/png;base64,${imageData}`)
+        setPreviewSeed(newSeed && newSeed !== g.seed ? newSeed : null)
     }
 
     // 다시 생성: 이 그림의 생성 정보 그대로, 시드만 새로 뽑아 한 장 더
@@ -82,7 +85,7 @@ export default function MainMode() {
                 onProgress: (p) => setActionProgress(p),
             })
             if (result.success && result.imageData) {
-                showResult(result.imageData)
+                showResult(result.imageData, result.seed)
                 toast({
                     title: t('toast.regenerated', '재생성 완료'),
                     description: t('comfy.regen.doneDesc', '새 시드 {{seed}} · 기록 패널에 추가했습니다', { seed: result.seed }),

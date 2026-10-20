@@ -114,6 +114,8 @@ export function MetadataDialog({ open, onOpenChange, initialImage }: MetadataDia
         if (!open) {
             setMetadata(null)
             setImageDataUrl(null)
+            // 다음에 열 때도 시드는 꺼진 채로 시작한다
+            setLoadOptions(prev => (prev.seed ? { ...prev, seed: false } : prev))
         }
     }, [open, initialImage])
 

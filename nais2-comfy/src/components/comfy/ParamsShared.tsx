@@ -303,6 +303,18 @@ export function ParamsHint({ children, className }: { children: ReactNode; class
 
 // ---------------------------------------------------------------------------
 
+/**
+ * 설정 창을 열 때 ComfyUI 상태를 아직 모르거나 꺼져 있었으면 한 번 다시 확인하고 목록을 받아 온다
+ * (ComfyUI를 나중에 켰거나 새 파일을 넣은 경우에도 바로 보이게)
+ */
+export function useComfyAutoRefresh(active: boolean) {
+    useEffect(() => {
+        if (!active) return
+        const s = useComfyStore.getState()
+        if (s.status === 'unknown' || s.status === 'offline') void s.refresh()
+    }, [active])
+}
+
 /** ComfyUI 목록(체크포인트·LoRA·샘플러…)을 다시 받아 오는 작은 버튼 */
 export function ComfyRefreshButton({ className }: { className?: string }) {
     const { t } = useTranslation()

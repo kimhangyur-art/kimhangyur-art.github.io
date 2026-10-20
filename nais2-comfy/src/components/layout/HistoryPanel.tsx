@@ -468,11 +468,12 @@ export function HistoryPanel() {
         })
     }
 
-    /** 결과를 메인 미리보기에 띄운다 (메인 생성 중이면 생성 화면을 덮지 않는다) */
-    const showInPreview = (imageData: string) => {
-        if (useGenerationStore.getState().isGenerating) return
+    /** 결과를 메인 미리보기에 띄운다 (메인 생성 중이면 생성 화면을 덮지 않는다). 다시 생성이면 새 시드를 정보 줄에 */
+    const showInPreview = (imageData: string, newSeed?: number) => {
+        const g = useGenerationStore.getState()
+        if (g.isGenerating) return
         setPreviewImage(`data:image/png;base64,${imageData}`)
-        useGenerationStore.getState().setPreviewSeed(null)
+        g.setPreviewSeed(newSeed && newSeed !== g.seed ? newSeed : null)
     }
 
     const handleImageClick = async (image: SavedImage) => {
@@ -584,7 +585,7 @@ export function HistoryPanel() {
         try {
             const result = await regenerateFromImage(source)
             if (result.success && result.imageData) {
-                showInPreview(result.imageData)
+                showInPreview(result.imageData, result.seed)
                 toast({
                     title: t('toast.regenerated', '재생성 완료'),
                     description: t('comfy.regen.doneDesc', '새 시드 {{seed}} · 기록 패널에 추가했습니다', { seed: result.seed }),

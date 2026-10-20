@@ -21,6 +21,17 @@ interface ExportDialogProps {
 
 type ExportFormat = 'png' | 'jpeg' | 'webp'
 
+/**
+ * ZIP 안 파일 이름이 겹치지 않게 한다 (이름이 같은 씬이 여럿이면 _2, _3 …).
+ * Windows는 대소문자를 가리지 않으므로 소문자로 비교한다.
+ */
+export function uniqueEntryName(used: Set<string>, base: string, ext: string): string {
+    let name = `${base}.${ext}`
+    for (let n = 2; used.has(name.toLowerCase()); n++) name = `${base}_${n}.${ext}`
+    used.add(name.toLowerCase())
+    return name
+}
+
 export function ExportDialog({ open, onOpenChange, activePresetName, scenes }: ExportDialogProps) {
     const { t } = useTranslation()
     const [format, setFormat] = useState<ExportFormat>('png')
@@ -36,6 +47,7 @@ export function ExportDialog({ open, onOpenChange, activePresetName, scenes }: E
         try {
             const zip = new JSZip()
             let count = 0
+            const usedNames = new Set<string>()
             
             // Calculate total: each scene exports 1 image OR all favorites if multiple
             const total = scenes.reduce((acc, scene) => {
@@ -83,10 +95,10 @@ export function ExportDialog({ open, onOpenChange, activePresetName, scenes }: E
                     // we might skip conversion, BUT 'imageData' is raw bytes.
 
                     if (format === 'png' && targetImage.url.endsWith('.png')) {
-                        finalBlob = new Blob([imageData as any], { type: 'image/png' })
+                        finalBlob = new Blob([imageData as BlobPart], { type: 'image/png' })
                     } else {
                         // Use OffscreenCanvas or ImageBitmap for conversion
-                        const blob = new Blob([imageData as any])
+                        const blob = new Blob([imageData as BlobPart])
                         const bitmap = await createImageBitmap(blob)
 
                         // We can use a canvas
@@ -114,7 +126,8 @@ export function ExportDialog({ open, onOpenChange, activePresetName, scenes }: E
                         // Add suffix if multiple favorites (_1, _2, etc.)
                         const suffix = imagesToExport.length > 1 ? `_${imgIndex + 1}` : ''
                         const arrayBuffer = await finalBlob.arrayBuffer()
-                        zip.file(`${safeName}${suffix}.${ext}`, new Uint8Array(arrayBuffer) as any)
+                        // 이름이 같은 씬이 여럿이면 덮어쓰지 않게 _2, _3 을 붙인다
+                        zip.file(uniqueEntryName(usedNames, `${safeName}${suffix}`, ext), new Uint8Array(arrayBuffer))
                         count++
                         setProgress(Math.round((count / total) * 100))
                     }
@@ -132,12 +145,12 @@ export function ExportDialog({ open, onOpenChange, activePresetName, scenes }: E
                     onOpenChange(false)
                 }
             } else {
-                toast({ title: t('scene.noImagesToExport'), variant: 'destructive' })
+                toast({ title: t('scene.noImagesToExport', '내보낼 그림이 없습니다'), variant: 'destructive' })
             }
 
         } catch (e) {
             console.error(e)
-            toast({ title: t('display.exportFailed'), description: String(e), variant: 'destructive' })
+            toast({ title: t('display.exportFailed', '내보내지 못했습니다'), description: String(e), variant: 'destructive' })
         } finally {
             setIsExporting(false)
         }
@@ -148,7 +161,9 @@ export function ExportDialog({ open, onOpenChange, activePresetName, scenes }: E
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>{t('scene.exportZip', 'ZIP 내보내기 설정')}</DialogTitle>
-                    <DialogDescription>{t('scene.exportZipDesc', '이미지 형식과 품질을 선택하세요.')}</DialogDescription>
+                    <DialogDescription>
+                        {t('comfy.scene.exportZipDesc', '씬마다 즐겨찾기한 그림을(없으면 가장 최근 그림 한 장을) ZIP 하나로 묶습니다. 고화질로 다시 그린 그림은 즐겨찾기를 이어받으므로 그 그림이 들어갑니다.')}
+                    </DialogDescription>
                 </DialogHeader>
 
                 <div className="grid gap-4 py-4">
@@ -159,12 +174,18 @@ export function ExportDialog({ open, onOpenChange, activePresetName, scenes }: E
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="png">PNG (Lossless)</SelectItem>
-                                <SelectItem value="webp">WEBP (High Efficiency)</SelectItem>
-                                <SelectItem value="jpeg">JPG (Standard)</SelectItem>
+                                <SelectItem value="png">{t('comfy.scene.formatPng', 'PNG (원본 그대로, 생성 정보 유지)')}</SelectItem>
+                                <SelectItem value="webp">{t('comfy.scene.formatWebp', 'WEBP (용량 작게)')}</SelectItem>
+                                <SelectItem value="jpeg">{t('comfy.scene.formatJpg', 'JPG (어디서나 열림)')}</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
+
+                    {format !== 'png' && (
+                        <p className="text-xs text-muted-foreground -mt-2">
+                            {t('comfy.scene.formatLossyHint', 'WEBP·JPG로 바꾸면 그림 안의 생성 정보(프롬프트·설정)가 빠집니다. 다시 불러올 일이 있으면 PNG를 고르세요.')}
+                        </p>
+                    )}
 
                     {format !== 'png' && (
                         <div className="grid gap-2">
@@ -182,7 +203,7 @@ export function ExportDialog({ open, onOpenChange, activePresetName, scenes }: E
                 </div>
 
                 <DialogFooter className="sm:justify-between items-center">
-                    {isExporting && <span className="text-xs text-muted-foreground">Converting... {progress}%</span>}
+                    {isExporting && <span className="text-xs text-muted-foreground">{t('comfy.scene.exporting', '묶는 중… {{progress}}%', { progress })}</span>}
                     <div className="flex gap-2">
                         <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isExporting}>
                             {t('common.cancel')}

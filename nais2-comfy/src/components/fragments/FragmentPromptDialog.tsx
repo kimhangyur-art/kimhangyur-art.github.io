@@ -66,6 +66,9 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from '@/components/ui/use-toast'
+// 파일 고르기·저장 창은 exe가 띄우는 Windows 창 (src/shims/dialog.ts, fs.ts)
+import { open as openFileDialog, save as saveFileDialog } from '@tauri-apps/plugin-dialog'
+import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
 
 interface FragmentPromptDialogProps {
     open: boolean
@@ -220,10 +223,8 @@ export function FragmentPromptDialog({ open, onOpenChange }: FragmentPromptDialo
     // txt 파일 불러오기
     const handleImportTxt = async () => {
         try {
-            const { open } = await import('@tauri-apps/plugin-dialog')
-            const { readTextFile } = await import('@tauri-apps/plugin-fs')
 
-            const selected = await open({
+            const selected = await openFileDialog({
                 multiple: true,
                 filters: [{ name: 'Text Files', extensions: ['txt'] }],
             })
@@ -266,13 +267,11 @@ export function FragmentPromptDialog({ open, onOpenChange }: FragmentPromptDialo
         if (!selectedFileId || !selectedFile) return
 
         try {
-            const { save } = await import('@tauri-apps/plugin-dialog')
-            const { writeTextFile } = await import('@tauri-apps/plugin-fs')
 
             const content = await exportToText(selectedFileId)
             if (content === null) return
 
-            const filePath = await save({
+            const filePath = await saveFileDialog({
                 defaultPath: `${selectedFile.name}.txt`,
                 filters: [{ name: 'Text Files', extensions: ['txt'] }],
             })
@@ -298,12 +297,10 @@ export function FragmentPromptDialog({ open, onOpenChange }: FragmentPromptDialo
     // 전체 내보내기 (JSON)
     const handleExportAll = async () => {
         try {
-            const { save } = await import('@tauri-apps/plugin-dialog')
-            const { writeTextFile } = await import('@tauri-apps/plugin-fs')
 
             const data = await exportAll()
             
-            const filePath = await save({
+            const filePath = await saveFileDialog({
                 defaultPath: `NAIS_Fragments_${Date.now()}.json`,
                 filters: [{ name: 'JSON Files', extensions: ['json'] }],
             })
@@ -329,10 +326,8 @@ export function FragmentPromptDialog({ open, onOpenChange }: FragmentPromptDialo
     // 전체 가져오기 (JSON)
     const handleImportAll = async () => {
         try {
-            const { open } = await import('@tauri-apps/plugin-dialog')
-            const { readTextFile } = await import('@tauri-apps/plugin-fs')
 
-            const selected = await open({
+            const selected = await openFileDialog({
                 multiple: false,
                 filters: [{ name: 'JSON Files', extensions: ['json'] }],
             })

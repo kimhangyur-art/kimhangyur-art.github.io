@@ -8,7 +8,7 @@ import { ParamsHires } from './ParamsHires'
 import { ParamsModel } from './ParamsModel'
 import { ParamsQuality } from './ParamsQuality'
 import { ParamsSampling } from './ParamsSampling'
-import { ParamsSection } from './ParamsShared'
+import { ParamsSection, useComfyAutoRefresh } from './ParamsShared'
 import { ParamsSizeSeed } from './ParamsSizeSeed'
 
 const SECTION_IDS = {
@@ -25,6 +25,8 @@ export function ParamsPanel() {
     const scrollRef = useRef<HTMLDivElement>(null)
     const loraCount = useGenerationStore((s) => s.loras.filter((l) => l.enabled && l.name).length)
     const hiresOn = useGenerationStore((s) => s.hires.enabled)
+    // 창이 열릴 때(이 부품이 그려질 때) ComfyUI 목록을 확인한다
+    useComfyAutoRefresh(true)
 
     const nav: Array<{ id: string; label: string }> = [
         { id: SECTION_IDS.model, label: t('comfy.params.navModel', '모델') },
