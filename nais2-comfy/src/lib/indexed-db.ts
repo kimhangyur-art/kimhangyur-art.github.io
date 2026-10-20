@@ -522,6 +522,7 @@ export async function exportAllData(): Promise<{ [key: string]: unknown }> {
         'nais2-presets',
         'nais2-settings',
         'nais2-scenes',
+        'nais2-variations',
         'nais2-shortcuts',
         'nais2-theme',
         'nais2-wildcards',
@@ -793,6 +794,7 @@ export async function getStoreSizes(): Promise<{ [key: string]: number }> {
         'nais2-presets',
         'nais2-settings',
         'nais2-scenes',
+        'nais2-variations',
         'nais2-wildcards',
         'nais2-library',
     ]

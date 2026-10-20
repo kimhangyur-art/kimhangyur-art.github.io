@@ -190,12 +190,45 @@ export interface ApplyResult {
     appended: string[]
 }
 
-/** 변형을 프롬프트에 적용한다 (바꾸기는 한 번에: 바꿔 넣은 글이 다시 바뀌지 않는다) */
-export function applyVariantDetailed(prompt: string, variant: Pick<Variant, 'changes'>): ApplyResult {
+interface Replacement {
+    src: string
+    value: string
+    find: string
+}
+
+/** 여러 find를 한 번에 바꾼다 (바꿔 넣은 글이 다시 바뀌지 않게) */
+function replaceAllAtOnce(text: string, replacements: Replacement[]): string {
+    if (!replacements.length) return text
+    // 긴 find 먼저 (long hair 와 very long hair 가 같이 있으면 very long hair 가 이긴다)
+    const ordered = [...replacements].sort((a, b) => b.find.length - a.find.length)
+    const re = new RegExp(ordered.map((r) => `(${r.src})`).join('|'), 'giu')
+    let removed = false
+    const out = text.replace(re, (...args: unknown[]) => {
+        const groups = args.slice(1, 1 + ordered.length)
+        const i = groups.findIndex((g) => g !== undefined)
+        const value = ordered[i]?.value ?? ''
+        if (!value) removed = true
+        return value
+    })
+    return removed ? tidyAfterRemove(out) : out
+}
+
+export interface ApplyManyResult {
+    texts: string[]
+    replaced: string[]
+    notFound: string[]
+    appended: string[]
+}
+
+/**
+ * 변형을 여러 글에 한꺼번에 적용한다: texts[0] 은 합친 프롬프트, 나머지는 캐릭터 프롬프트.
+ * find 글은 그 글이 있는 곳(어느 글이든)에서 바꾸고, 어디에도 없으면 texts[0] 끝에 붙인다.
+ */
+export function applyVariantToTexts(texts: string[], variant: Pick<Variant, 'changes'>): ApplyManyResult {
     const replaced: string[] = []
     const notFound: string[] = []
     const appended: string[] = []
-    const replacements: Array<{ src: string; value: string; find: string }> = []
+    const replacements: Replacement[] = []
     const seenFind = new Set<string>()
     for (const c of variant.changes) {
         const find = c.find.trim()
@@ -207,7 +240,7 @@ export function applyVariantDetailed(prompt: string, variant: Pick<Variant, 'cha
         const key = find.toLowerCase()
         if (seenFind.has(key)) continue
         seenFind.add(key)
-        if (!containsFind(prompt, find)) {
+        if (!texts.some((t) => containsFind(t, find))) {
             notFound.push(find)
             if (value) appended.push(value)
             continue
@@ -215,24 +248,15 @@ export function applyVariantDetailed(prompt: string, variant: Pick<Variant, 'cha
         replaced.push(find)
         replacements.push({ src: findSource(find)!, value, find })
     }
+    const out = (texts.length ? texts : ['']).map((t) => replaceAllAtOnce(t, replacements))
+    if (appended.length) out[0] = joinPrompt(out[0], ...appended)
+    return { texts: out, replaced, notFound, appended }
+}
 
-    let text = prompt
-    let removed = false
-    if (replacements.length) {
-        // 긴 find 먼저 (long hair 와 very long hair 가 같이 있으면 very long hair 가 이긴다)
-        const ordered = [...replacements].sort((a, b) => b.find.length - a.find.length)
-        const re = new RegExp(ordered.map((r) => `(${r.src})`).join('|'), 'giu')
-        text = text.replace(re, (...args: unknown[]) => {
-            const groups = args.slice(1, 1 + ordered.length)
-            const i = groups.findIndex((g) => g !== undefined)
-            const value = ordered[i]?.value ?? ''
-            if (!value) removed = true
-            return value
-        })
-        if (removed) text = tidyAfterRemove(text)
-    }
-    if (appended.length) text = joinPrompt(text, ...appended)
-    return { text, replaced, notFound, appended }
+/** 변형을 프롬프트 하나에 적용한다 */
+export function applyVariantDetailed(prompt: string, variant: Pick<Variant, 'changes'>): ApplyResult {
+    const r = applyVariantToTexts([prompt], variant)
+    return { text: r.texts[0], replaced: r.replaced, notFound: r.notFound, appended: r.appended }
 }
 
 /** 변형을 프롬프트에 적용한 글 */
@@ -449,6 +473,17 @@ export function defaultRunName(d: Date = new Date()): string {
     return `변형 ${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}-${p(d.getMinutes())}`
 }
 
+/** 이미 있는 묶음 이름이면 뒤에 (2), (3)… 을 붙인다 (같은 분에 두 번 시작해도 폴더가 섞이지 않게) */
+export function uniqueRunName(name: string, taken: string[]): string {
+    const used = new Set(taken.map((n) => n.trim().toLowerCase()))
+    const base = name.trim()
+    if (!used.has(base.toLowerCase())) return base
+    for (let i = 2; ; i++) {
+        const next = `${base} (${i})`
+        if (!used.has(next.toLowerCase())) return next
+    }
+}
+
 /** 정해진 시작값으로 늘 같은 난수를 내는 함수 (무작위 N개를 미리 보여 준 그대로 그리기 위해) */
 export function seededRng(seed: number): () => number {
     let a = seed >>> 0
@@ -505,6 +540,13 @@ export interface PromptFields {
     detailPrompt: string
 }
 
+export interface CharacterText {
+    id: string
+    /** 알림에 쓰는 이름 (예: 캐릭터 1) */
+    label: string
+    prompt: string
+}
+
 export const FIELD_LABELS: Record<keyof PromptFields, string> = {
     basePrompt: '기본 프롬프트',
     additionalPrompt: '추가 프롬프트',
@@ -519,10 +561,16 @@ function appendTag(text: string, tag: string): string {
 
 /**
  * 변형의 바꾸기를 왼쪽 프롬프트 칸들에 그대로 옮긴다.
- * find 글은 그 글이 있는 칸(기본·추가·세부)에서 바꾸고, 붙이기 변수와 어느 칸에도 없는 find는 세부 프롬프트 끝에 붙인다.
+ * find 글은 그 글이 있는 칸(기본·추가·세부, 켜 둔 캐릭터 프롬프트)에서 바꾸고,
+ * 붙이기 변수와 어느 칸에도 없는 find는 세부 프롬프트 끝에 붙인다.
  */
-export function applyVariantToFields(fields: PromptFields, variant: Pick<Variant, 'changes'>): { fields: PromptFields; notes: string[] } {
+export function applyVariantToFields(
+    fields: PromptFields,
+    variant: Pick<Variant, 'changes'>,
+    characters: CharacterText[] = [],
+): { fields: PromptFields; characters: CharacterText[]; notes: string[] } {
     const next: PromptFields = { ...fields }
+    const chars = characters.map((c) => ({ ...c }))
     const notes: string[] = []
     const order: Array<keyof PromptFields> = ['basePrompt', 'additionalPrompt', 'detailPrompt']
     for (const c of variant.changes) {
@@ -531,9 +579,12 @@ export function applyVariantToFields(fields: PromptFields, variant: Pick<Variant
         const value = c.value.trim()
         if (find) {
             const hit = order.filter((k) => containsFind(next[k], find))
-            if (hit.length) {
+            const charHit = chars.filter((ch) => containsFind(ch.prompt, find))
+            if (hit.length || charHit.length) {
                 for (const k of hit) next[k] = applyVariant(next[k], { changes: [c] })
-                notes.push(`${hit.map((k) => FIELD_LABELS[k]).join('·')}: ${find} → ${valueLabel(value)}`)
+                for (const ch of charHit) ch.prompt = applyVariant(ch.prompt, { changes: [c] })
+                const where = [...hit.map((k) => FIELD_LABELS[k]), ...charHit.map((ch) => ch.label)].join('·')
+                notes.push(`${where}: ${find} → ${valueLabel(value)}`)
                 continue
             }
         }
@@ -541,5 +592,6 @@ export function applyVariantToFields(fields: PromptFields, variant: Pick<Variant
         next.detailPrompt = appendTag(next.detailPrompt, value)
         notes.push(find ? `${FIELD_LABELS.detailPrompt} 끝에 ${value} 추가 ("${find}"는 칸에 없었습니다)` : `${FIELD_LABELS.detailPrompt} 끝에 ${value} 추가`)
     }
-    return { fields: next, notes }
+    const changedChars = chars.filter((ch, i) => ch.prompt !== characters[i].prompt)
+    return { fields: next, characters: changedChars, notes }
 }

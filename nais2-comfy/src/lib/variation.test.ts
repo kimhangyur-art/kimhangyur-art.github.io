@@ -3,6 +3,7 @@ import {
     applyVariant,
     applyVariantDetailed,
     applyVariantToFields,
+    applyVariantToTexts,
     clampPerVariant,
     comboCount,
     containsFind,
@@ -14,6 +15,7 @@ import {
     parseOptions,
     planJobs,
     seededRng,
+    uniqueRunName,
     variantFileLabel,
     variantFullLabel,
     variantLabel,
@@ -197,6 +199,11 @@ describe('planJobs', () => {
 })
 
 describe('helpers', () => {
+    it('uniqueRunName', () => {
+        expect(uniqueRunName('변형 A', [])).toBe('변형 A')
+        expect(uniqueRunName('변형 A', ['변형 a'])).toBe('변형 A (2)')
+        expect(uniqueRunName('변형 A', ['변형 A', '변형 A (2)'])).toBe('변형 A (3)')
+    })
     it('defaultRunName', () => {
         expect(defaultRunName(new Date(2026, 9, 5, 9, 3))).toBe('변형 2026-10-05 09-03')
     })
@@ -240,5 +247,33 @@ describe('applyVariantToFields', () => {
     it('appends to an empty detail prompt without a leading comma', () => {
         const r = applyVariantToFields({ basePrompt: 'a', additionalPrompt: '', detailPrompt: '\n' }, { changes: [{ variableId: 'h', name: '', find: '', value: 'x' }] })
         expect(r.fields.detailPrompt).toBe('x')
+    })
+})
+
+describe('applyVariantToTexts (character prompts)', () => {
+    it('replaces in a character prompt when the main prompt lacks the text', () => {
+        const r = applyVariantToTexts(['masterpiece, school', '1girl, long hair, blue eyes'], {
+            changes: [
+                { variableId: 'h', name: '', find: 'long hair', value: 'ponytail' },
+                { variableId: 'c', name: '', find: '', value: 'silver hair' },
+            ],
+        })
+        expect(r.texts).toEqual(['masterpiece, school, silver hair', '1girl, ponytail, blue eyes'])
+        expect(r.notFound).toEqual([])
+    })
+    it('appends to the main prompt when no text has the find', () => {
+        const r = applyVariantToTexts(['a', 'b'], { changes: [{ variableId: 'h', name: '', find: 'zzz', value: 'x' }] })
+        expect(r.texts).toEqual(['a, x', 'b'])
+        expect(r.notFound).toEqual(['zzz'])
+    })
+    it('applyVariantToFields also edits character prompts', () => {
+        const r = applyVariantToFields(
+            { basePrompt: 'masterpiece', additionalPrompt: '', detailPrompt: '' },
+            { changes: [{ variableId: 'h', name: '', find: 'long hair', value: 'bob cut' }] },
+            [{ id: 'c1', label: '캐릭터 1', prompt: '1girl, long hair' }, { id: 'c2', label: '캐릭터 2', prompt: '1boy' }],
+        )
+        expect(r.characters).toEqual([{ id: 'c1', label: '캐릭터 1', prompt: '1girl, bob cut' }])
+        expect(r.fields.basePrompt).toBe('masterpiece')
+        expect(r.notes[0]).toContain('캐릭터 1')
     })
 })

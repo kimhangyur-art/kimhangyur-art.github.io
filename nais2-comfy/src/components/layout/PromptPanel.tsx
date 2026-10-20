@@ -65,6 +65,8 @@ export function PromptPanel() {
     // Zustand 선택적 구독 - variationStore (변형 모드)
     const variationRunning = useVariationStore(state => state.isRunning)
     const variationCancelling = useVariationStore(state => state.isCancelling)
+    const variationPerVariant = useVariationStore(state => state.perVariant)
+    const setVariationPerVariant = useVariationStore(state => state.setPerVariant)
     const variationTotal = useVariationStore(state => state.totalJobs)
     const variationDone = useVariationStore(state => state.doneJobs)
     const variationPlanned = useVariationStore(state => state.plannedCount())
@@ -483,11 +485,12 @@ export function PromptPanel() {
                     >
                         {renderButtonLabel()}
                     </Button>
+                    {/* 변형 모드에서는 '변형마다 몇 장'을 정한다 */}
                     <Counter
-                        value={batchCount}
-                        onChange={setBatchCount}
+                        value={isVariationMode ? variationPerVariant : batchCount}
+                        onChange={isVariationMode ? setVariationPerVariant : setBatchCount}
                         min={1}
-                        max={9999}
+                        max={isVariationMode ? 8 : 9999}
                         fontSize={16}
                     />
                 </div>

@@ -407,6 +407,11 @@ export async function runPrompt(prompt: ApiPrompt, opts: RunOptions = {}): Promi
     }
     const promptId = await queuePrompt(prompt, opts.extraPngInfo ? { extra_pnginfo: opts.extraPngInfo } : undefined)
     opts.onQueued?.(promptId)
+    // 등록하는 사이에 중단을 눌렀으면 바로 빼고 끝낸다
+    if (opts.signal?.aborted) {
+        void interruptPrompt(promptId)
+        throw new ComfyInterrupted()
+    }
     const collected: Array<ImageRef & { node: string }> = []
 
     const outcome = await new Promise<{ status: 'success' | 'error' | 'interrupted'; error?: string; detail?: string }>((resolve) => {
